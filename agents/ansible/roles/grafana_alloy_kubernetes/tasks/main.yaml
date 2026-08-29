@@ -6,6 +6,11 @@
     name: "{{ alloy_namespace }}"
     state: present
 
+- name: Grafana Helm 저장소 등록
+  kubernetes.core.helm_repository:
+    name: grafana
+    repo_url: https://grafana.github.io/helm-charts
+
 - name: Kubernetes Alloy DaemonSet 배포
   kubernetes.core.helm:
     name: alloy
@@ -17,6 +22,7 @@
       controller:
         type: daemonset
       alloy:
+        extraEnv: "{{ alloy_environment | dict2items(key_name='name', value_name='value') }}"
         configMap:
           create: true
           content: |

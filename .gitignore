@@ -35,6 +35,7 @@ charts/**/tmpcharts/
 rendered/
 tmp/
 .tmp/
+local/
 
 # Test, coverage, and logs
 .pytest_cache/
