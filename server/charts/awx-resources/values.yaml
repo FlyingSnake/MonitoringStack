@@ -1,0 +1,6 @@
+awx:
+  enabled: false
+  name: monitoring-awx
+  adminPasswordSecret: awx-admin
+  projectsPersistence: true
+  projectsStorageSize: 10Gi

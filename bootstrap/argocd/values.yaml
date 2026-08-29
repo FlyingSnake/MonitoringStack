@@ -1,0 +1,34 @@
+global:
+  domain: argocd.example.internal
+
+crds:
+  install: true
+  keep: true
+
+configs:
+  params:
+    server.insecure: false
+  cm:
+    application.resourceTrackingMethod: annotation
+  rbac:
+    policy.default: role:readonly
+
+server:
+  replicas: 2
+  service:
+    type: ClusterIP
+
+repoServer:
+  replicas: 2
+
+controller:
+  replicas: 1
+
+applicationSet:
+  replicas: 2
+
+redis:
+  enabled: true
+
+notifications:
+  enabled: true

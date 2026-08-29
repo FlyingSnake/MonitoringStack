@@ -1,0 +1,19 @@
+gitRevision: stg
+environment: stg
+applications:
+  platform-resources:
+    values:
+      vault:
+        server: https://vault.stg.example.internal
+        role: monitoring-stack-stg
+      keycloak: { url: "https://keycloak.stg.example.internal", realm: monitoring }
+      gateway: { name: platform-gateway, namespace: gateway-system, sectionName: https }
+      grafana: { rootUrl: "https://grafana.stg.example.internal", replicas: 2 }
+      routes:
+        - { name: grafana, namespace: grafana, hostname: grafana.stg.example.internal, service: grafana-service, port: 3000 }
+  minio:
+    enabled: true
+    values: { mode: distributed, statefulset: { replicaCount: 4 } }
+  redpanda:
+    enabled: true
+    values: { statefulset: { replicas: 3 } }

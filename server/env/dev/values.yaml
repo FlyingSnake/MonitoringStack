@@ -1,0 +1,15 @@
+gitRevision: dev
+environment: dev
+applications:
+  platform-resources:
+    values:
+      vault:
+        server: https://vault.dev.example.internal
+        role: monitoring-stack-dev
+      keycloak: { url: "https://keycloak.dev.example.internal", realm: monitoring }
+      gateway: { name: platform-gateway, namespace: gateway-system, sectionName: https }
+      grafana: { rootUrl: "https://grafana.dev.example.internal", replicas: 1 }
+      routes:
+        - { name: grafana, namespace: grafana, hostname: grafana.dev.example.internal, service: grafana-service, port: 3000 }
+  minio: { enabled: true }
+  redpanda: { enabled: true }

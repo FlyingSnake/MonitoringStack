@@ -1,0 +1,26 @@
+name: Validate GitOps configuration
+
+on:
+  pull_request:
+  push:
+    branches: [dev, stg, main]
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: azure/setup-helm@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install Ansible dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install ansible-core ansible-lint
+          ansible-galaxy collection install -r agents/ansible/collections/requirements.yaml
+      - name: Validate GitOps configuration
+        run: make validate

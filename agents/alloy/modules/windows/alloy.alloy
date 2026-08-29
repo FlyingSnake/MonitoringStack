@@ -1,0 +1,35 @@
+declare "pipeline" {
+  argument "hostname" {}
+
+  loki.write "default" {
+    endpoint {
+      url = sys.env("LOKI_URL")
+    }
+    external_labels = {
+      environment = sys.env("MONITORING_ENVIRONMENT"),
+      host        = argument.hostname.value,
+      source      = "windows",
+    }
+  }
+
+  loki.source.windowsevent "application" {
+    eventlog_name = "Application"
+    forward_to    = [loki.write.default.receiver]
+    labels = { job = "windows-eventlog" }
+  }
+
+  otelcol.receiver.otlp "default" {
+    grpc {}
+    http {}
+    output {
+      traces = [otelcol.exporter.otlp.tempo.input]
+    }
+  }
+
+  otelcol.exporter.otlp "tempo" {
+    client {
+      endpoint = sys.env("TEMPO_OTLP_GRPC_ENDPOINT")
+      tls { insecure = false }
+    }
+  }
+}

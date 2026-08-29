@@ -1,0 +1,8 @@
+---
+alloy_version: 1.11.2
+alloy_config_repository: https://github.com/FlyingSnake/MonitoringStack.git
+alloy_config_revision: dev
+alloy_config_module_path: agents/alloy/modules/windows/alloy.alloy
+alloy_config_pull_frequency: 5m
+alloy_install_dir: C:\\Program Files\\GrafanaLabs\\Alloy
+alloy_installer_url: "https://github.com/grafana/alloy/releases/download/v{{ alloy_version }}/alloy-installer-windows-amd64.exe"

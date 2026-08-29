@@ -1,0 +1,36 @@
+---
+- name: Alloy namespace 생성
+  kubernetes.core.k8s:
+    api_version: v1
+    kind: Namespace
+    name: "{{ alloy_namespace }}"
+    state: present
+
+- name: Kubernetes Alloy DaemonSet 배포
+  kubernetes.core.helm:
+    name: alloy
+    chart_ref: grafana/alloy
+    chart_version: "{{ alloy_chart_version }}"
+    release_namespace: "{{ alloy_namespace }}"
+    create_namespace: true
+    values:
+      controller:
+        type: daemonset
+      alloy:
+        configMap:
+          create: true
+          content: |
+            logging {
+              level = "info"
+            }
+
+            import.git "modules" {
+              repository     = "{{ alloy_config_repository }}"
+              revision       = "{{ alloy_config_revision }}"
+              path           = "{{ alloy_config_module_path }}"
+              pull_frequency = "{{ alloy_config_pull_frequency }}"
+            }
+
+            modules.pipeline "default" {
+              hostname = constants.hostname
+            }

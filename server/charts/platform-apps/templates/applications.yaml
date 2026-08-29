@@ -1,0 +1,41 @@
+{{- range $name, $app := .Values.applications }}
+{{- if $app.enabled }}
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: {{ $name }}
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: {{ $app.syncWave | quote }}
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: {{ $.Values.project.name }}
+  destination:
+    server: {{ $.Values.cluster.server | quote }}
+    namespace: {{ $app.namespace | quote }}
+  source:
+    {{- if eq $app.source.type "helm" }}
+    chart: {{ $app.source.chart | quote }}
+    repoURL: {{ $app.source.repoURL | quote }}
+    targetRevision: {{ $app.source.targetRevision | quote }}
+    helm:
+      releaseName: {{ $app.releaseName | default $name | quote }}
+      valuesObject:
+        {{- toYaml $app.values | nindent 8 }}
+    {{- else }}
+    repoURL: {{ $.Values.repository.url | quote }}
+    targetRevision: {{ $.Values.gitRevision | quote }}
+    path: {{ $app.source.path | quote }}
+    helm:
+      releaseName: {{ $app.releaseName | default $name | quote }}
+      valuesObject:
+        {{- toYaml $app.values | nindent 8 }}
+    {{- end }}
+  syncPolicy:
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true
+{{- end }}
+{{- end }}
