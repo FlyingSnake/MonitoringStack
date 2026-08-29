@@ -77,6 +77,8 @@ applications:
         - { name: blackbox }
         - { name: awx }
         - { name: observability }
+      bootstrapServiceAccounts:
+        - { name: external-secrets-vault, namespace: external-secrets }
       protectedNamespaces: [keycloak, minio, redpanda, loki, mimir, tempo, pyroscope, grafana, blackbox, awx, observability]
       gatewayNamespace: gateway-system
 

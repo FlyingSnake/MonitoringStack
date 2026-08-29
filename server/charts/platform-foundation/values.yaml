@@ -1,3 +1,4 @@
 namespaces: []
+bootstrapServiceAccounts: []
 protectedNamespaces: []
 gatewayNamespace: gateway-system

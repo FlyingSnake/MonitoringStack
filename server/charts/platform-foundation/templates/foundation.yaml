@@ -7,6 +7,14 @@ metadata:
   labels:
     app.kubernetes.io/part-of: monitoring-stack
 {{- end }}
+{{- range .Values.bootstrapServiceAccounts }}
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: {{ .name }}
+  namespace: {{ .namespace }}
+{{- end }}
 {{- range .Values.protectedNamespaces }}
 ---
 apiVersion: networking.k8s.io/v1
