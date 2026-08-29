@@ -1,0 +1,27 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: monitoring-stack-dev
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: argocd
+  sources:
+    - repoURL: https://github.com/FlyingSnake/MonitoringStack.git
+      targetRevision: dev
+      path: server/charts/platform-apps
+      helm:
+        valueFiles:
+          - $values/server/values/common.yaml
+          - $values/server/env/dev/values.yaml
+    - repoURL: https://github.com/FlyingSnake/MonitoringStack.git
+      targetRevision: dev
+      ref: values
+  syncPolicy:
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true

@@ -1,0 +1,17 @@
+[Unit]
+Description=Grafana Alloy
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+User=alloy
+Group=alloy
+{% for key, value in alloy_environment | dictsort %}
+Environment="{{ key }}={{ value }}"
+{% endfor %}
+ExecStart=/usr/local/bin/alloy run {{ alloy_config_path }} --storage.path=/var/lib/alloy
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

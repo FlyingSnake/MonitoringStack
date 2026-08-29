@@ -1,0 +1,18 @@
+namespaces: []
+protectedNamespaces: []
+vault:
+  enabled: false
+  storeName: vault-backend
+  server: ""
+  kvMount: monitoring
+  kubernetesAuthMount: kubernetes
+  role: ""
+externalSecrets: []
+keycloak: { url: "", realm: monitoring }
+gateway: { name: "", namespace: "", sectionName: https }
+grafana:
+  enabled: false
+  rootUrl: ""
+  replicas: 1
+  datasources: []
+routes: []

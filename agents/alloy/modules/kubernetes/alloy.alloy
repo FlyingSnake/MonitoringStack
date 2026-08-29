@@ -1,0 +1,45 @@
+declare "pipeline" {
+  argument "hostname" {}
+
+  discovery.kubernetes "pods" {
+    role = "pod"
+  }
+
+  discovery.relabel "pod_logs" {
+    targets = discovery.kubernetes.pods.targets
+    rule {
+      source_labels = ["__meta_kubernetes_namespace"]
+      target_label  = "namespace"
+    }
+    rule {
+      source_labels = ["__meta_kubernetes_pod_name"]
+      target_label  = "pod"
+    }
+  }
+
+  loki.source.kubernetes "pods" {
+    targets    = discovery.relabel.pod_logs.output
+    forward_to = [loki.write.default.receiver]
+  }
+
+  loki.write "default" {
+    endpoint {
+      url = sys.env("LOKI_URL")
+    }
+    external_labels = {
+      environment = sys.env("MONITORING_ENVIRONMENT"),
+      cluster     = sys.env("MONITORING_CLUSTER"),
+      source      = "kubernetes",
+    }
+  }
+
+  prometheus.remote_write "default" {
+    endpoint {
+      url = sys.env("MIMIR_REMOTE_WRITE_URL")
+    }
+    external_labels = {
+      environment = sys.env("MONITORING_ENVIRONMENT"),
+      cluster     = sys.env("MONITORING_CLUSTER"),
+    }
+  }
+}

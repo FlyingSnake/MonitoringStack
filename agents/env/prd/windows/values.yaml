@@ -1,0 +1,14 @@
+environment: prd
+target: windows
+enabled: true
+inventory: { source: agents/ansible/inventories/prd/windows/hosts.yml }
+alloy:
+  version: 1.11.2
+  config: { repository: "https://github.com/FlyingSnake/MonitoringStack.git", revision: main, modulePath: agents/alloy/modules/windows/alloy.alloy, pullFrequency: 5m }
+endpoints:
+  loki: https://loki.prd.example.internal/loki/api/v1/push
+  mimir: https://mimir.prd.example.internal/api/v1/push
+  tempoGrpc: tempo.prd.example.internal:4317
+  pyroscope: https://pyroscope.prd.example.internal
+security: { authSecretRef: alloy-write-credentials, tlsSecretRef: alloy-client-tls }
+features: { logs: true, metrics: true, traces: true, profiling: false }

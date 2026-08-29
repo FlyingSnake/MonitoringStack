@@ -1,0 +1,12 @@
+{{- if .Values.awx.enabled }}
+apiVersion: awx.ansible.com/v1beta1
+kind: AWX
+metadata:
+  name: {{ .Values.awx.name }}
+spec:
+  service_type: ClusterIP
+  admin_user: admin
+  admin_password_secret: {{ .Values.awx.adminPasswordSecret }}
+  projects_persistence: {{ .Values.awx.projectsPersistence }}
+  projects_storage_size: {{ .Values.awx.projectsStorageSize }}
+{{- end }}

@@ -1,0 +1,6 @@
+apiVersion: v2
+name: monitoring-platform-apps
+description: Argo CD App-of-Apps chart for MonitoringStack
+type: application
+version: 0.1.0
+appVersion: "0.1.0"

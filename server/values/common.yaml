@@ -1,0 +1,272 @@
+repository:
+  url: https://github.com/FlyingSnake/MonitoringStack.git
+gitRevision: dev
+cluster:
+  server: https://kubernetes.default.svc
+project:
+  name: monitoring-platform
+  sourceRepos:
+    - https://github.com/FlyingSnake/MonitoringStack.git
+    - https://argoproj.github.io/argo-helm
+    - https://charts.external-secrets.io
+    - https://charts.bitnami.com/bitnami
+    - https://grafana.github.io/helm-charts
+    - https://prometheus-community.github.io/helm-charts
+    - https://charts.redpanda.com
+    - https://awx-operator.github.io/awx-operator-helm/
+
+applications:
+  platform-resources:
+    enabled: true
+    namespace: argocd
+    syncWave: "02"
+    source:
+      type: git
+      path: server/charts/platform-resources
+    values:
+      namespaces:
+        - { name: external-secrets }
+        - { name: keycloak }
+        - { name: minio }
+        - { name: redpanda }
+        - { name: loki }
+        - { name: mimir }
+        - { name: tempo }
+        - { name: pyroscope }
+        - { name: grafana }
+        - { name: blackbox }
+        - { name: awx }
+        - { name: observability }
+      protectedNamespaces: [keycloak, minio, redpanda, loki, mimir, tempo, pyroscope, grafana, awx]
+      vault:
+        enabled: true
+        storeName: vault-backend
+        server: https://vault.example.internal
+        kvMount: monitoring
+        kubernetesAuthMount: kubernetes
+        role: monitoring-stack
+      externalSecrets:
+        - name: keycloak-admin
+          namespace: keycloak
+          targetSecret: keycloak-admin
+          keys:
+            - { secretKey: admin-password, remoteKey: monitoring/keycloak, property: admin-password }
+        - name: keycloak-postgresql
+          namespace: keycloak
+          targetSecret: keycloak-postgresql
+          keys:
+            - { secretKey: password, remoteKey: monitoring/keycloak-postgresql, property: password }
+        - name: minio-root
+          namespace: minio
+          targetSecret: minio-root
+          keys:
+            - { secretKey: root-user, remoteKey: monitoring/minio, property: root-user }
+            - { secretKey: root-password, remoteKey: monitoring/minio, property: root-password }
+        - name: object-storage-credentials
+          namespace: observability
+          targetSecret: object-storage-credentials
+          keys:
+            - { secretKey: access_key_id, remoteKey: monitoring/object-storage, property: access-key-id }
+            - { secretKey: access_key_secret, remoteKey: monitoring/object-storage, property: secret-access-key }
+        - name: awx-admin
+          namespace: awx
+          targetSecret: awx-admin
+          keys:
+            - { secretKey: password, remoteKey: monitoring/awx, property: admin-password }
+      keycloak:
+        url: https://keycloak.example.internal
+        realm: monitoring
+      gateway:
+        name: existing-gateway
+        namespace: gateway-system
+        sectionName: https
+      grafana:
+        enabled: true
+        rootUrl: https://grafana.example.internal
+        replicas: 1
+        datasources:
+          - { name: loki, displayName: Loki, type: loki, url: "http://loki-gateway.loki.svc.cluster.local", isDefault: false }
+          - { name: mimir, displayName: Mimir, type: prometheus, url: "http://mimir-nginx.mimir.svc.cluster.local/prometheus", isDefault: true }
+          - { name: tempo, displayName: Tempo, type: tempo, url: "http://tempo-query-frontend.tempo.svc.cluster.local:3100", isDefault: false }
+          - { name: pyroscope, displayName: Pyroscope, type: grafana-pyroscope-datasource, url: "http://pyroscope.pyroscope.svc.cluster.local:4040", isDefault: false }
+      routes:
+        - { name: grafana, namespace: grafana, hostname: grafana.example.internal, service: grafana-service, port: 3000 }
+
+  external-secrets:
+    enabled: true
+    namespace: external-secrets
+    syncWave: "01"
+    source: { type: helm, repoURL: "https://charts.external-secrets.io", chart: external-secrets, targetRevision: 2.10.0 }
+    values:
+      installCRDs: true
+      serviceMonitor: { enabled: false }
+
+  keycloak:
+    enabled: true
+    namespace: keycloak
+    syncWave: "10"
+    source: { type: helm, repoURL: "https://charts.bitnami.com/bitnami", chart: keycloak, targetRevision: 25.2.0 }
+    values:
+      auth:
+        adminUser: admin
+        existingSecret: keycloak-admin
+        passwordSecretKey: admin-password
+      postgresql:
+        enabled: true
+        auth:
+          username: keycloak
+          database: keycloak
+          existingSecret: keycloak-postgresql
+          secretKeys: { userPasswordKey: password }
+        primary:
+          persistence: { enabled: true, size: 8Gi }
+      service: { type: ClusterIP }
+
+  minio:
+    enabled: true
+    namespace: minio
+    syncWave: "20"
+    source: { type: helm, repoURL: "https://charts.bitnami.com/bitnami", chart: minio, targetRevision: 17.0.21 }
+    values:
+      mode: standalone
+      auth:
+        existingSecret: minio-root
+        rootUserSecretKey: root-user
+        rootPasswordSecretKey: root-password
+      defaultBuckets: loki,tempo,mimir,pyroscope
+      persistence: { enabled: true, size: 50Gi }
+
+  redpanda:
+    enabled: true
+    namespace: redpanda
+    syncWave: "20"
+    source: { type: helm, repoURL: "https://charts.redpanda.com", chart: redpanda, targetRevision: 26.2.2 }
+    values:
+      statefulset:
+        replicas: 1
+      storage: { persistentVolume: { enabled: true, size: 20Gi } }
+      external: { enabled: false }
+
+  grafana-operator:
+    enabled: true
+    namespace: grafana
+    syncWave: "30"
+    source: { type: helm, repoURL: "https://grafana.github.io/helm-charts", chart: grafana-operator, targetRevision: 5.25.0 }
+    values:
+      crds: { immutable: false }
+      serviceMonitor: { enabled: false }
+
+  loki:
+    enabled: true
+    namespace: loki
+    syncWave: "30"
+    source: { type: helm, repoURL: "https://grafana.github.io/helm-charts", chart: loki, targetRevision: 7.3.0 }
+    values:
+      deploymentMode: Distributed
+      loki:
+        auth_enabled: false
+        commonConfig: { replication_factor: 1 }
+        schemaConfig:
+          configs:
+            - from: "2024-04-01"
+              store: tsdb
+              object_store: s3
+              schema: v13
+              index: { prefix: loki_index_, period: 24h }
+        storage:
+          type: s3
+          bucketNames: { chunks: loki, ruler: loki, admin: loki }
+          s3: { endpoint: "minio.minio.svc.cluster.local:9000", insecure: true }
+      minio: { enabled: false }
+      gateway: { enabled: true }
+      lokiCanary: { enabled: true }
+      write: { replicas: 1 }
+      read: { replicas: 1 }
+      backend: { replicas: 1 }
+
+  mimir:
+    enabled: true
+    namespace: mimir
+    syncWave: "30"
+    source: { type: helm, repoURL: "https://grafana.github.io/helm-charts", chart: mimir-distributed, targetRevision: 6.2.0 }
+    values:
+      minio: { enabled: false }
+      mimir:
+        structuredConfig:
+          multitenancy_enabled: false
+          common:
+            storage:
+              backend: s3
+              s3: { endpoint: "minio.minio.svc.cluster.local:9000", insecure: true, bucket_name: mimir }
+      ingester: { replicas: 1 }
+      store_gateway: { replicas: 1 }
+      distributor: { replicas: 1 }
+      querier: { replicas: 1 }
+
+  tempo:
+    enabled: true
+    namespace: tempo
+    syncWave: "30"
+    source: { type: helm, repoURL: "https://grafana.github.io/helm-charts", chart: tempo-distributed, targetRevision: 1.61.3 }
+    values:
+      tempo:
+        multitenancyEnabled: false
+        storage:
+          trace:
+            backend: s3
+            s3: { endpoint: "minio.minio.svc.cluster.local:9000", insecure: true, bucket: tempo }
+      traces:
+        otlp: { grpc: { enabled: true }, http: { enabled: true } }
+      ingester: { replicas: 1 }
+      distributor: { replicas: 1 }
+      querier: { replicas: 1 }
+      queryFrontend: { replicas: 1 }
+
+  pyroscope:
+    enabled: true
+    namespace: pyroscope
+    syncWave: "30"
+    source: { type: helm, repoURL: "https://grafana.github.io/helm-charts", chart: pyroscope, targetRevision: 2.2.1 }
+    values:
+      pyroscope:
+        config: |
+          storage:
+            backend: s3
+            s3:
+              endpoint: "minio.minio.svc.cluster.local:9000"
+              bucket_name: pyroscope
+              insecure: true
+      minio: { enabled: false }
+
+  blackbox-exporter:
+    enabled: true
+    namespace: blackbox
+    syncWave: "30"
+    source: { type: helm, repoURL: "https://prometheus-community.github.io/helm-charts", chart: prometheus-blackbox-exporter, targetRevision: 11.17.2 }
+    values:
+      config:
+        modules:
+          http_2xx: { prober: http, timeout: 5s, http: { valid_http_versions: [HTTP/1.1, HTTP/2.0] } }
+          tcp_connect: { prober: tcp, timeout: 5s }
+          icmp: { prober: icmp, timeout: 5s }
+          dns_udp: { prober: dns, timeout: 5s, dns: { query_name: example.com, query_type: A } }
+
+  awx-operator:
+    enabled: true
+    namespace: awx
+    syncWave: "40"
+    source: { type: helm, repoURL: "https://awx-operator.github.io/awx-operator-helm/", chart: awx-operator, targetRevision: 3.2.1 }
+    values: { }
+
+  awx-resources:
+    enabled: true
+    namespace: awx
+    syncWave: "41"
+    source: { type: git, path: server/charts/awx-resources }
+    values:
+      awx:
+        enabled: true
+        name: monitoring-awx
+        adminPasswordSecret: awx-admin
+        projectsPersistence: true
+        projectsStorageSize: 10Gi

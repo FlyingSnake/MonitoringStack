@@ -1,0 +1,24 @@
+---
+- name: Alloy 설치 디렉터리 생성
+  ansible.windows.win_file:
+    path: "{{ alloy_install_dir }}"
+    state: directory
+
+- name: Alloy 설치 프로그램 다운로드 및 설치
+  ansible.windows.win_package:
+    path: "{{ alloy_installer_url }}"
+    arguments: /S
+    state: present
+
+- name: Alloy bootstrap 구성 배포
+  ansible.windows.win_template:
+    src: config.alloy.j2
+    dest: "{{ alloy_install_dir }}\\config.alloy"
+  notify: Alloy 서비스 재시작
+
+- name: Alloy 서비스가 설치되어 있는지 확인
+  ansible.windows.win_service:
+    name: Alloy
+    start_mode: auto
+    state: started
+  notify: Alloy 서비스 재시작

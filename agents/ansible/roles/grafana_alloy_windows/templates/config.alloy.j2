@@ -1,0 +1,14 @@
+logging {
+  level = "info"
+}
+
+import.git "modules" {
+  repository     = "{{ alloy_config_repository }}"
+  revision       = "{{ alloy_config_revision }}"
+  path           = "{{ alloy_config_module_path }}"
+  pull_frequency = "{{ alloy_config_pull_frequency }}"
+}
+
+modules.pipeline "default" {
+  hostname = constants.hostname
+}

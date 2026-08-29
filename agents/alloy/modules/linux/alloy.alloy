@@ -1,0 +1,67 @@
+declare "pipeline" {
+  argument "hostname" {}
+
+  loki.write "default" {
+    endpoint {
+      url = sys.env("LOKI_URL")
+    }
+    external_labels = {
+      environment = sys.env("MONITORING_ENVIRONMENT"),
+      host        = argument.hostname.value,
+      source      = "linux",
+    }
+  }
+
+  loki.source.journal "default" {
+    forward_to = [loki.write.default.receiver]
+    labels = {
+      job = "journal",
+    }
+  }
+
+  prometheus.exporter.unix "host" {}
+
+  prometheus.scrape "host" {
+    targets    = prometheus.exporter.unix.host.targets
+    forward_to = [prometheus.remote_write.default.receiver]
+  }
+
+  prometheus.remote_write "default" {
+    endpoint {
+      url = sys.env("MIMIR_REMOTE_WRITE_URL")
+    }
+    external_labels = {
+      environment = sys.env("MONITORING_ENVIRONMENT"),
+      instance    = argument.hostname.value,
+      source      = "linux",
+    }
+  }
+
+  otelcol.receiver.otlp "default" {
+    grpc {}
+    http {}
+    output {
+      traces = [otelcol.exporter.otlp.tempo.input]
+    }
+  }
+
+  otelcol.exporter.otlp "tempo" {
+    client {
+      endpoint = sys.env("TEMPO_OTLP_GRPC_ENDPOINT")
+      tls {
+        insecure = false
+      }
+    }
+  }
+
+  pyroscope.write "default" {
+    endpoint {
+      url = sys.env("PYROSCOPE_URL")
+    }
+    external_labels = {
+      environment = sys.env("MONITORING_ENVIRONMENT"),
+      host        = argument.hostname.value,
+      source      = "linux",
+    }
+  }
+}

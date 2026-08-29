@@ -1,0 +1,7 @@
+---
+alloy_namespace: alloy
+alloy_chart_version: 1.12.1
+alloy_config_repository: https://github.com/FlyingSnake/MonitoringStack.git
+alloy_config_revision: dev
+alloy_config_module_path: agents/alloy/modules/kubernetes/alloy.alloy
+alloy_config_pull_frequency: 5m
