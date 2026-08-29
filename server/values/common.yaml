@@ -121,9 +121,11 @@ applications:
     syncWave: "10"
     source: { type: helm, repoURL: "https://charts.bitnami.com/bitnami", chart: keycloak, targetRevision: 25.2.0 }
     values:
+      image: { repository: bitnamilegacy/keycloak }
       auth: { adminUser: admin, existingSecret: keycloak-admin, passwordSecretKey: admin-password }
       postgresql:
         enabled: true
+        image: { repository: bitnamilegacy/postgresql }
         auth: { username: keycloak, database: keycloak, existingSecret: keycloak-postgresql, secretKeys: { userPasswordKey: password } }
         primary: { persistence: { enabled: true, size: 8Gi } }
       service: { type: ClusterIP }
@@ -148,6 +150,8 @@ applications:
     syncWave: "20"
     source: { type: helm, repoURL: "https://charts.bitnami.com/bitnami", chart: minio, targetRevision: 17.0.21 }
     values:
+      image: { repository: bitnamilegacy/minio }
+      console: { image: { repository: bitnamilegacy/minio-object-browser } }
       mode: standalone
       auth: { existingSecret: minio-root, rootUserSecretKey: root-user, rootPasswordSecretKey: root-password }
       defaultBuckets: loki,tempo,mimir-blocks,mimir-ruler,mimir-alertmanager,pyroscope

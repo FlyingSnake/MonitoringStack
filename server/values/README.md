@@ -2,6 +2,8 @@
 
 `common.yaml`에는 고정된 Helm chart 버전, Argo CD Application sync wave, 공통 서비스 설정을 둡니다. `server/env/<환경>/values.yaml`은 Git revision, 도메인, 기존 Gateway listener, Vault 방식, 스토리지와 복제본만 오버레이합니다.
 
+Keycloak과 MinIO의 Bitnami 기반 이미지는 제거된 기존 `bitnami/*` 태그 대신, 동일한 불변 태그를 보관하는 `bitnamilegacy/*` repository를 명시합니다. 차트나 이미지를 올릴 때는 Helm chart 버전과 이미지 태그를 함께 검증합니다.
+
 `dev`는 단일 Raft Vault를 운영자가 초기화·Unseal합니다. `stg`, `prd`는 EKS IRSA와 AWS KMS Auto-Unseal을 사용하며, `REQUIRED_*` 값은 실제 인프라 값으로 교체하기 전에는 배포하지 않습니다.
 
 ## Vault 초기 bootstrap
