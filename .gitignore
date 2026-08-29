@@ -1,0 +1,44 @@
+# Operating system and editor files
+.DS_Store
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# Local environment and secret material (never commit plaintext credentials)
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+*.crt
+*.csr
+*.kubeconfig
+*.vault-password
+secrets/**/*.dec.yaml
+secrets/**/*.plain.yaml
+
+# Ansible local state, caches, and generated artifacts
+*.retry
+.ansible/
+ansible/collections/ansible_collections/
+agents/ansible/artifacts/
+agents/ansible/private_data_dir/
+
+# Helm, Kubernetes, and temporary render output
+charts/**/charts/
+charts/**/tmpcharts/
+*.tgz
+rendered/
+tmp/
+.tmp/
+
+# Test, coverage, and logs
+.pytest_cache/
+.molecule/
+coverage/
+htmlcov/
+*.log
