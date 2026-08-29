@@ -31,6 +31,9 @@ applications:
       distributor: { replicas: 1 }
       ingester: { replicas: 1, zoneAwareReplication: { enabled: false } }
       kafka: { enabled: false }
+      mimir:
+        structuredConfig:
+          ingest_storage: { enabled: false }
       overrides_exporter: { enabled: false }
       querier: { replicas: 1 }
       query_frontend: { replicas: 1 }
