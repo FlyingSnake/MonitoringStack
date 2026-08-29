@@ -49,6 +49,8 @@ applications:
     enabled: true
     namespace: external-secrets
     syncWave: "01"
+    # ESO CRDs exceed Kubernetes' client-side apply annotation limit.
+    syncOptions: [Replace=true]
     source: { type: helm, repoURL: "https://charts.external-secrets.io", chart: external-secrets, targetRevision: 2.10.0 }
     values: { installCRDs: true, serviceMonitor: { enabled: false } }
 
