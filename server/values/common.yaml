@@ -55,7 +55,9 @@ applications:
   platform-foundation:
     enabled: true
     namespace: argocd
-    syncWave: "02"
+    # Namespace manifests must exist before independently synced Helm
+    # Applications can create namespaced objects.
+    syncWave: "-01"
     source: { type: git, path: server/charts/platform-foundation }
     values:
       namespaces:

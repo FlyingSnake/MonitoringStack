@@ -1,6 +1,6 @@
 # 서버 GitOps
 
-`server/`는 중앙 관측성 플랫폼을 위한 선언형 Kubernetes 설정을 담습니다. Application sync wave는 Vault → 인증서/Secret → 기반 리소스 → Keycloak → 저장소 → 관측성 → Gateway 정책 → AWX 순서입니다.
+`server/`는 중앙 관측성 플랫폼을 위한 선언형 Kubernetes 설정을 담습니다. Application sync wave는 Namespace 기반 리소스 → Vault → 인증서/Secret → Keycloak → 저장소 → 관측성 → Gateway 정책 → AWX 순서입니다. 독립적으로 수동 Sync하는 Helm Application이 대상 namespace를 먼저 요구하므로, foundation 차트가 유일하게 `-01` wave를 사용합니다.
 
 Argo CD는 Helm으로 한 번 부트스트랩한 뒤 `Application`과 `AppProject` CR을 통해 모든 플랫폼 애플리케이션을 수동 동기화합니다. 대상 워크로드는 Vault, cert-manager, External Secrets, Keycloak, MinIO/Redpanda, Grafana Operator/Grafana, Loki, Tempo, Mimir, Pyroscope, blackbox exporter, 서버 Alloy, AWX Operator, AWX입니다.
 
