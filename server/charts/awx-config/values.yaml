@@ -1,0 +1,9 @@
+awx:
+  enabled: false
+  name: monitoring-awx
+  url: http://monitoring-awx-service.awx.svc.cluster.local
+  adminSecret: awx-admin
+  oidcSecret: oidc-client-secrets
+  image: quay.io/ansible/awx-ee:24.6.1
+  repository: https://github.com/FlyingSnake/MonitoringStack.git
+  revision: dev

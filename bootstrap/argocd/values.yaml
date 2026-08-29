@@ -1,5 +1,5 @@
 global:
-  domain: argocd.example.internal
+  domain: argocd.dev.example.internal
 
 crds:
   install: true
@@ -12,6 +12,9 @@ configs:
     application.resourceTrackingMethod: annotation
   rbac:
     policy.default: role:readonly
+    policy.csv: |
+      g, platform-admin, role:admin
+      g, observability-viewer, role:readonly
 
 server:
   replicas: 2

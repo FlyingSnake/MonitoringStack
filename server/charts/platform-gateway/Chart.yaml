@@ -1,0 +1,5 @@
+apiVersion: v2
+name: monitoring-platform-gateway
+description: Gateway API routes, certificates, and Envoy Gateway policies
+type: application
+version: 0.1.0

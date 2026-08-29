@@ -1,0 +1,7 @@
+keycloak:
+  realm: monitoring
+  internalUrl: http://keycloak.keycloak.svc.cluster.local
+  adminSecret: keycloak-admin
+  oidcSecret: oidc-client-secrets
+  image: adorsys/keycloak-config-cli:latest-26.3.3
+  hosts: {}

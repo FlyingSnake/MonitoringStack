@@ -9,4 +9,7 @@ spec:
   admin_password_secret: {{ .Values.awx.adminPasswordSecret }}
   projects_persistence: {{ .Values.awx.projectsPersistence }}
   projects_storage_size: {{ .Values.awx.projectsStorageSize }}
+  postgres_storage_requirements:
+    requests:
+      storage: {{ .Values.awx.postgresStorageSize }}
 {{- end }}

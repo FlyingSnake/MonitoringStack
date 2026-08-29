@@ -1,15 +1,38 @@
 gitRevision: dev
 environment: dev
+baseDomain: example.internal
 applications:
-  platform-resources:
+  vault:
     values:
-      vault:
-        server: https://vault.dev.example.internal
-        role: monitoring-stack-dev
-      keycloak: { url: "https://keycloak.dev.example.internal", realm: monitoring }
-      gateway: { name: platform-gateway, namespace: gateway-system, sectionName: https }
-      grafana: { rootUrl: "https://grafana.dev.example.internal", replicas: 1 }
-      routes:
-        - { name: grafana, namespace: grafana, hostname: grafana.dev.example.internal, service: grafana-service, port: 3000 }
-  minio: { enabled: true }
-  redpanda: { enabled: true }
+      server:
+        standalone:
+          enabled: true
+        dataStorage: { enabled: true, size: 10Gi }
+        auditStorage: { enabled: true, size: 10Gi }
+  platform-identity:
+    values:
+      keycloak:
+        hosts: { argocd: "https://argocd.dev.example.internal", grafana: "https://grafana.dev.example.internal", awx: "https://awx.dev.example.internal" }
+  platform-observability:
+    values:
+      grafana: { rootUrl: "https://grafana.dev.example.internal", keycloakUrl: "https://keycloak.dev.example.internal", replicas: 1 }
+  platform-gateway:
+    values:
+      gateway:
+        name: platform-gateway
+        namespace: gateway-system
+        uiListener: ui-https
+        ingestListener: ingest-https
+        tls:
+          uiDnsNames: [grafana.dev.example.internal, argocd.dev.example.internal, keycloak.dev.example.internal, awx.dev.example.internal]
+          ingestDnsNames: [loki.ingest.dev.example.internal, mimir.ingest.dev.example.internal, tempo.ingest.dev.example.internal, pyroscope.ingest.dev.example.internal]
+        uiRoutes:
+          - { name: grafana, namespace: grafana, hostname: grafana.dev.example.internal, service: grafana-service, port: 3000 }
+          - { name: keycloak, namespace: keycloak, hostname: keycloak.dev.example.internal, service: keycloak, port: 80 }
+          - { name: argocd, namespace: argocd, hostname: argocd.dev.example.internal, service: argocd-server, port: 80 }
+          - { name: awx, namespace: awx, hostname: awx.dev.example.internal, service: monitoring-awx-service, port: 80 }
+        ingestionRoutes:
+          - { name: loki-ingest, namespace: loki, hostname: loki.ingest.dev.example.internal, service: loki-gateway, port: 80, basicAuthSecret: ingestion-basic-auth }
+          - { name: mimir-ingest, namespace: mimir, hostname: mimir.ingest.dev.example.internal, service: mimir-nginx, port: 80, basicAuthSecret: ingestion-basic-auth }
+          - { name: tempo-ingest, namespace: tempo, hostname: tempo.ingest.dev.example.internal, service: tempo-distributor, port: 4318, basicAuthSecret: ingestion-basic-auth }
+          - { name: pyroscope-ingest, namespace: pyroscope, hostname: pyroscope.ingest.dev.example.internal, service: pyroscope, port: 4040, basicAuthSecret: ingestion-basic-auth }

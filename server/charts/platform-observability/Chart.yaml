@@ -1,0 +1,5 @@
+apiVersion: v2
+name: monitoring-platform-observability
+description: Grafana CR and datasource declarations for MonitoringStack
+type: application
+version: 0.1.0

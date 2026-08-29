@@ -1,0 +1,78 @@
+{{- if .Values.awx.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: awx-bootstrap-playbook
+  namespace: awx
+data:
+  bootstrap.yml: |
+    ---
+    - name: Configure MonitoringStack AWX objects
+      hosts: localhost
+      connection: local
+      gather_facts: false
+      collections: [awx.awx]
+      module_defaults:
+        group/awx.awx.controller:
+          controller_host: "{{ .Values.awx.url }}"
+          controller_username: admin
+          controller_password: "{{ "{{ lookup('env', 'CONTROLLER_PASSWORD') }}" }}"
+          validate_certs: false
+      tasks:
+        - awx.awx.organization:
+            name: MonitoringStack
+            state: present
+        - awx.awx.project:
+            name: MonitoringStack Agents
+            organization: MonitoringStack
+            scm_type: git
+            scm_url: {{ .Values.awx.repository | quote }}
+            scm_branch: {{ .Values.awx.revision | quote }}
+            state: present
+        - awx.awx.inventory:
+            name: MonitoringStack Git Inventory
+            organization: MonitoringStack
+            state: present
+        - awx.awx.job_template:
+            name: "Install Alloy - {{ "{{ item.target }}" }}"
+            organization: MonitoringStack
+            inventory: MonitoringStack Git Inventory
+            project: MonitoringStack Agents
+            playbook: "agents/ansible/playbooks/install-alloy-{{ "{{ item.target }}" }}.yaml"
+            state: present
+          loop:
+            - { target: linux }
+            - { target: windows }
+            - { target: kubernetes }
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: awx-config
+  namespace: awx
+  annotations:
+    argocd.argoproj.io/hook: Sync
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation,HookSucceeded
+spec:
+  backoffLimit: 6
+  template:
+    spec:
+      restartPolicy: OnFailure
+      containers:
+        - name: awx-config
+          image: {{ .Values.awx.image | quote }}
+          command: [ansible-playbook, /config/bootstrap.yml]
+          env:
+            - name: CONTROLLER_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.awx.adminSecret }}
+                  key: password
+          volumeMounts:
+            - name: config
+              mountPath: /config
+      volumes:
+        - name: config
+          configMap:
+            name: awx-bootstrap-playbook
+{{- end }}

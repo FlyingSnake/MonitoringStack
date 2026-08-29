@@ -4,3 +4,4 @@ awx:
   adminPasswordSecret: awx-admin
   projectsPersistence: true
   projectsStorageSize: 10Gi
+  postgresStorageSize: 8Gi
