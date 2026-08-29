@@ -4,6 +4,8 @@
 
 Argo CD는 Helm으로 한 번 부트스트랩한 뒤 `Application`과 `AppProject` CR을 통해 모든 플랫폼 애플리케이션을 수동 동기화합니다. 대상 워크로드는 Vault, cert-manager, External Secrets, Keycloak, MinIO/Redpanda, Grafana Operator/Grafana, Loki, Tempo, Mimir, Pyroscope, blackbox exporter, 서버 Alloy, AWX Operator, AWX입니다.
 
+External Secrets CRD는 크기가 커서 Kubernetes의 client-side apply annotation 한도를 초과합니다. 각 클러스터에서는 ESO Application을 처음 수동 Sync하기 전에 `bootstrap/install-external-secrets-crds.sh`를 한 번 실행합니다. 이 스크립트는 고정된 CRD 버전을 server-side apply하고, 이후 ESO controller 자체는 Argo CD가 관리합니다.
+
 ## 환경 설정
 
 환경마다 하나의 values 파일을 사용합니다.

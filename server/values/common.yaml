@@ -49,10 +49,10 @@ applications:
     enabled: true
     namespace: external-secrets
     syncWave: "01"
-    # ESO CRDs exceed Kubernetes' client-side apply annotation limit.
-    syncOptions: [Replace=true]
-    source: { type: helm, repoURL: "https://charts.external-secrets.io", chart: external-secrets, targetRevision: 2.10.0 }
-    values: { installCRDs: true, serviceMonitor: { enabled: false } }
+    # CRDs are installed once by bootstrap/install-external-secrets-crds.sh with
+    # server-side apply; Argo CD's Helm CRD path uses client-side annotations.
+    source: { type: helm, repoURL: "https://charts.external-secrets.io", chart: external-secrets, targetRevision: 2.10.0, skipCrds: true }
+    values: { installCRDs: false, serviceMonitor: { enabled: false } }
 
   platform-foundation:
     enabled: true

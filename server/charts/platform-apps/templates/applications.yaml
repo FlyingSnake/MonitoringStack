@@ -22,6 +22,9 @@ spec:
     targetRevision: {{ $app.source.targetRevision | quote }}
     helm:
       releaseName: {{ $app.releaseName | default $name | quote }}
+      {{- if $app.source.skipCrds }}
+      skipCrds: true
+      {{- end }}
       valuesObject:
         {{- toYaml $app.values | nindent 8 }}
     {{- else }}
