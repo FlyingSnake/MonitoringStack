@@ -34,6 +34,7 @@ applications:
       mimir:
         structuredConfig:
           ingest_storage: { enabled: false }
+          ingester: { push_grpc_method_enabled: true }
       overrides_exporter: { enabled: false }
       querier: { replicas: 1 }
       query_frontend: { replicas: 1 }
