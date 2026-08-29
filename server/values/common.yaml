@@ -95,6 +95,7 @@ applications:
         kvMount: monitoring
         kubernetesAuthMount: kubernetes
         role: monitoring-stack
+      gatewaySecretNamespace: gateway-system
       externalSecrets:
         - { name: keycloak-admin, namespace: keycloak, targetSecret: keycloak-admin, keys: [{ secretKey: admin-password, remoteKey: keycloak, property: admin-password }] }
         - { name: keycloak-postgresql, namespace: keycloak, targetSecret: keycloak-postgresql, keys: [{ secretKey: password, remoteKey: keycloak-postgresql, property: password }] }
@@ -108,7 +109,7 @@ applications:
         - { name: object-storage-credentials, namespace: pyroscope, targetSecret: object-storage-credentials, keys: [{ secretKey: AWS_ACCESS_KEY_ID, remoteKey: object-storage, property: access-key-id }, { secretKey: AWS_SECRET_ACCESS_KEY, remoteKey: object-storage, property: secret-access-key }] }
         - { name: awx-admin, namespace: awx, targetSecret: awx-admin, keys: [{ secretKey: password, remoteKey: awx, property: admin-password }] }
         - { name: oidc-client-secrets, namespace: awx, targetSecret: oidc-client-secrets, keys: [{ secretKey: awx-client-secret, remoteKey: oidc, property: awx-client-secret }] }
-        - { name: monitoring-ingest-ca, namespace: gateway-system, targetSecret: monitoring-ingest-ca, keys: [{ secretKey: ca.crt, remoteKey: pki, property: ingest-ca-crt }] }
+        - { name: monitoring-ingest-ca, gatewaySecret: true, targetSecret: monitoring-ingest-ca, keys: [{ secretKey: ca.crt, remoteKey: pki, property: ingest-ca-crt }] }
         - { name: ingestion-basic-auth, namespace: loki, targetSecret: ingestion-basic-auth, keys: [{ secretKey: .htpasswd, remoteKey: ingestion, property: htpasswd }] }
         - { name: ingestion-basic-auth, namespace: mimir, targetSecret: ingestion-basic-auth, keys: [{ secretKey: .htpasswd, remoteKey: ingestion, property: htpasswd }] }
         - { name: ingestion-basic-auth, namespace: tempo, targetSecret: ingestion-basic-auth, keys: [{ secretKey: .htpasswd, remoteKey: ingestion, property: htpasswd }] }

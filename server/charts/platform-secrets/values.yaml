@@ -5,4 +5,5 @@ vault:
   kvMount: monitoring
   kubernetesAuthMount: kubernetes
   role: monitoring-stack
+gatewaySecretNamespace: gateway-system
 externalSecrets: []
