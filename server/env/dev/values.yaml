@@ -16,6 +16,32 @@ applications:
   platform-observability:
     values:
       grafana: { rootUrl: "https://grafana.dev.example.internal", keycloakUrl: "https://keycloak.dev.example.internal", replicas: 1 }
+  loki:
+    values:
+      # 개발 환경은 캐시와 canary를 생략해 분산 Loki의 필수 역할만 실행한다.
+      chunksCache: { enabled: false }
+      resultsCache: { enabled: false }
+      lokiCanary: { enabled: false }
+      test: { enabled: false }
+  mimir:
+    values:
+      # zone-aware HA와 내장 Kafka는 stg/prd에만 사용한다.
+      alertmanager: { replicas: 1, zoneAwareReplication: { enabled: false } }
+      compactor: { replicas: 1 }
+      distributor: { replicas: 1 }
+      ingester: { replicas: 1, zoneAwareReplication: { enabled: false } }
+      kafka: { enabled: false }
+      overrides_exporter: { enabled: false }
+      querier: { replicas: 1 }
+      query_frontend: { replicas: 1 }
+      query_scheduler: { enabled: false }
+      rollout_operator: { enabled: false }
+      ruler: { replicas: 1 }
+      store_gateway: { replicas: 1, zoneAwareReplication: { enabled: false } }
+  pyroscope:
+    values:
+      # 서버 Alloy Application이 수집을 담당하므로 Pyroscope 차트의 내장 Alloy는 끈다.
+      alloy: { enabled: false }
   platform-gateway:
     values:
       gateway:
