@@ -23,6 +23,10 @@
         type: daemonset
       alloy:
         extraEnv: "{{ alloy_environment | dict2items(key_name='name', value_name='value') }}"
+        extraPorts:
+          - { name: otlp-grpc, port: 4317, targetPort: 4317, protocol: TCP }
+          - { name: otlp-http, port: 4318, targetPort: 4318, protocol: TCP }
+          - { name: pyroscope, port: 9999, targetPort: 9999, protocol: TCP }
         configMap:
           create: true
           content: |

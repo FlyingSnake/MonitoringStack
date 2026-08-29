@@ -17,6 +17,26 @@ declare "pipeline" {
     }
   }
 
+  discovery.relabel "pod_metrics" {
+    targets = discovery.kubernetes.pods.targets
+    rule {
+      source_labels = ["__meta_kubernetes_pod_annotation_prometheus_io_scrape"]
+      regex         = "true"
+      action        = "keep"
+    }
+    rule {
+      source_labels = ["__meta_kubernetes_pod_annotation_prometheus_io_path"]
+      regex         = "(.+)"
+      target_label  = "__metrics_path__"
+    }
+    rule {
+      source_labels = ["__address__", "__meta_kubernetes_pod_annotation_prometheus_io_port"]
+      regex         = "([^:]+)(?::\\d+)?;(\\d+)"
+      replacement   = "$1:$2"
+      target_label  = "__address__"
+    }
+  }
+
   loki.source.kubernetes "pods" {
     targets    = discovery.relabel.pod_logs.output
     forward_to = [loki.write.default.receiver]
@@ -40,6 +60,47 @@ declare "pipeline" {
     external_labels = {
       environment = sys.env("MONITORING_ENVIRONMENT"),
       cluster     = sys.env("MONITORING_CLUSTER"),
+    }
+  }
+
+  prometheus.scrape "pods" {
+    targets    = discovery.relabel.pod_metrics.output
+    forward_to = [prometheus.remote_write.default.receiver]
+  }
+
+  otelcol.receiver.otlp "default" {
+    grpc {}
+    http {}
+    output {
+      traces = [otelcol.exporter.otlp.tempo.input]
+    }
+  }
+
+  otelcol.exporter.otlp "tempo" {
+    client {
+      endpoint = sys.env("TEMPO_OTLP_GRPC_ENDPOINT")
+      tls {
+        insecure = true
+      }
+    }
+  }
+
+  pyroscope.receive_http "default" {
+    http {
+      listen_address = "0.0.0.0"
+      listen_port    = 9999
+    }
+    forward_to = [pyroscope.write.default.receiver]
+  }
+
+  pyroscope.write "default" {
+    endpoint {
+      url = sys.env("PYROSCOPE_URL")
+    }
+    external_labels = {
+      environment = sys.env("MONITORING_ENVIRONMENT"),
+      cluster     = sys.env("MONITORING_CLUSTER"),
+      source      = "kubernetes",
     }
   }
 }

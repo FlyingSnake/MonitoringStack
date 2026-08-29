@@ -10,3 +10,5 @@ alloy_environment:
   MIMIR_REMOTE_WRITE_URL: https://mimir.dev.example.internal/api/v1/push
   MONITORING_CLUSTER: local-kind
   MONITORING_ENVIRONMENT: dev
+  PYROSCOPE_URL: https://pyroscope.dev.example.internal
+  TEMPO_OTLP_GRPC_ENDPOINT: tempo.dev.example.internal:4317
