@@ -25,7 +25,7 @@ applications:
       test: { enabled: false }
   mimir:
     values:
-      # zone-aware HA와 내장 Kafka는 stg/prd에만 사용한다.
+      # zone-aware HA는 stg/prd에만 사용하며, ingest는 공용 Redpanda Kafka를 사용한다.
       alertmanager: { replicas: 1, zoneAwareReplication: { enabled: false } }
       compactor: { replicas: 1 }
       distributor: { replicas: 1 }
@@ -33,8 +33,8 @@ applications:
       kafka: { enabled: false }
       mimir:
         structuredConfig:
-          ingest_storage: { enabled: false }
-          ingester: { push_grpc_method_enabled: true }
+          ingest_storage: { enabled: true, kafka: { address: "redpanda.redpanda.svc.cluster.local:9093", topic: mimir-ingest, auto_create_topic_enabled: true, auto_create_topic_default_partitions: 1 } }
+          ingester: { push_grpc_method_enabled: false }
       overrides_exporter: { enabled: false }
       querier: { replicas: 1 }
       query_frontend: { replicas: 1 }
@@ -64,6 +64,6 @@ applications:
           - { name: awx, namespace: awx, hostname: awx.dev.example.internal, service: monitoring-awx-service, port: 80 }
         ingestionRoutes:
           - { name: loki-ingest, namespace: loki, hostname: loki.ingest.dev.example.internal, service: loki-gateway, port: 80, basicAuthSecret: ingestion-basic-auth }
-          - { name: mimir-ingest, namespace: mimir, hostname: mimir.ingest.dev.example.internal, service: mimir-nginx, port: 80, basicAuthSecret: ingestion-basic-auth }
-          - { name: tempo-ingest, namespace: tempo, hostname: tempo.ingest.dev.example.internal, service: tempo-distributor, port: 4318, basicAuthSecret: ingestion-basic-auth }
+          - { name: mimir-ingest, namespace: monitoring-stack-server, hostname: mimir.ingest.dev.example.internal, service: mimir-nginx, port: 80, basicAuthSecret: ingestion-basic-auth }
+          - { name: tempo-ingest, namespace: monitoring-stack-server, hostname: tempo.ingest.dev.example.internal, service: tempo-distributor, port: 4318, basicAuthSecret: ingestion-basic-auth }
           - { name: pyroscope-ingest, namespace: pyroscope, hostname: pyroscope.ingest.dev.example.internal, service: pyroscope, port: 4040, basicAuthSecret: ingestion-basic-auth }

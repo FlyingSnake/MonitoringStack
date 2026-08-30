@@ -70,8 +70,7 @@ applications:
         - { name: minio }
         - { name: redpanda }
         - { name: loki }
-        - { name: mimir }
-        - { name: tempo }
+        - { name: monitoring-stack-server }
         - { name: pyroscope }
         - { name: grafana }
         - { name: blackbox }
@@ -79,7 +78,7 @@ applications:
         - { name: observability }
       bootstrapServiceAccounts:
         - { name: external-secrets-vault, namespace: external-secrets }
-      protectedNamespaces: [keycloak, minio, redpanda, loki, mimir, tempo, pyroscope, grafana, blackbox, awx, observability]
+      protectedNamespaces: [keycloak, minio, redpanda, loki, monitoring-stack-server, pyroscope, grafana, blackbox, awx, observability]
       gatewayNamespace: gateway-system
 
   platform-secrets:
@@ -104,15 +103,13 @@ applications:
         - { name: oidc-client-secrets, namespace: grafana, targetSecret: oidc-client-secrets, keys: [{ secretKey: grafana-client-secret, remoteKey: oidc, property: grafana-client-secret }] }
         - { name: minio-root, namespace: minio, targetSecret: minio-root, keys: [{ secretKey: root-user, remoteKey: minio, property: root-user }, { secretKey: root-password, remoteKey: minio, property: root-password }] }
         - { name: object-storage-credentials, namespace: loki, targetSecret: object-storage-credentials, keys: [{ secretKey: AWS_ACCESS_KEY_ID, remoteKey: object-storage, property: access-key-id }, { secretKey: AWS_SECRET_ACCESS_KEY, remoteKey: object-storage, property: secret-access-key }] }
-        - { name: object-storage-credentials, namespace: mimir, targetSecret: object-storage-credentials, keys: [{ secretKey: AWS_ACCESS_KEY_ID, remoteKey: object-storage, property: access-key-id }, { secretKey: AWS_SECRET_ACCESS_KEY, remoteKey: object-storage, property: secret-access-key }] }
-        - { name: object-storage-credentials, namespace: tempo, targetSecret: object-storage-credentials, keys: [{ secretKey: AWS_ACCESS_KEY_ID, remoteKey: object-storage, property: access-key-id }, { secretKey: AWS_SECRET_ACCESS_KEY, remoteKey: object-storage, property: secret-access-key }] }
+        - { name: object-storage-credentials, namespace: monitoring-stack-server, targetSecret: object-storage-credentials, keys: [{ secretKey: AWS_ACCESS_KEY_ID, remoteKey: object-storage, property: access-key-id }, { secretKey: AWS_SECRET_ACCESS_KEY, remoteKey: object-storage, property: secret-access-key }] }
         - { name: object-storage-credentials, namespace: pyroscope, targetSecret: object-storage-credentials, keys: [{ secretKey: AWS_ACCESS_KEY_ID, remoteKey: object-storage, property: access-key-id }, { secretKey: AWS_SECRET_ACCESS_KEY, remoteKey: object-storage, property: secret-access-key }] }
         - { name: awx-admin, namespace: awx, targetSecret: awx-admin, keys: [{ secretKey: password, remoteKey: awx, property: admin-password }] }
         - { name: oidc-client-secrets, namespace: awx, targetSecret: oidc-client-secrets, keys: [{ secretKey: awx-client-secret, remoteKey: oidc, property: awx-client-secret }] }
         - { name: monitoring-ingest-ca, gatewaySecret: true, targetSecret: monitoring-ingest-ca, keys: [{ secretKey: ca.crt, remoteKey: pki, property: ingest-ca-crt }] }
         - { name: ingestion-basic-auth, namespace: loki, targetSecret: ingestion-basic-auth, keys: [{ secretKey: .htpasswd, remoteKey: ingestion, property: htpasswd }] }
-        - { name: ingestion-basic-auth, namespace: mimir, targetSecret: ingestion-basic-auth, keys: [{ secretKey: .htpasswd, remoteKey: ingestion, property: htpasswd }] }
-        - { name: ingestion-basic-auth, namespace: tempo, targetSecret: ingestion-basic-auth, keys: [{ secretKey: .htpasswd, remoteKey: ingestion, property: htpasswd }] }
+        - { name: ingestion-basic-auth, namespace: monitoring-stack-server, targetSecret: ingestion-basic-auth, keys: [{ secretKey: .htpasswd, remoteKey: ingestion, property: htpasswd }] }
         - { name: ingestion-basic-auth, namespace: pyroscope, targetSecret: ingestion-basic-auth, keys: [{ secretKey: .htpasswd, remoteKey: ingestion, property: htpasswd }] }
 
   keycloak:
@@ -186,8 +183,8 @@ applications:
         realm: monitoring
         datasources:
           - { name: loki, uid: loki, displayName: Loki, type: loki, url: "http://loki-gateway.loki.svc.cluster.local", isDefault: false }
-          - { name: mimir, uid: mimir, displayName: Mimir, type: prometheus, url: "http://mimir-nginx.mimir.svc.cluster.local/prometheus", isDefault: true }
-          - { name: tempo, uid: tempo, displayName: Tempo, type: tempo, url: "http://tempo-query-frontend.tempo.svc.cluster.local:3100", isDefault: false, jsonData: { tracesToLogsV2: { datasourceUid: loki }, tracesToProfiles: { datasourceUid: pyroscope } } }
+          - { name: mimir, uid: mimir, displayName: Mimir, type: prometheus, url: "http://mimir-nginx.monitoring-stack-server.svc.cluster.local/prometheus", isDefault: true }
+          - { name: tempo, uid: tempo, displayName: Tempo, type: tempo, url: "http://tempo-query-frontend.monitoring-stack-server.svc.cluster.local:3100", isDefault: false, jsonData: { tracesToLogsV2: { datasourceUid: loki }, tracesToProfiles: { datasourceUid: pyroscope } } }
           - { name: pyroscope, uid: pyroscope, displayName: Pyroscope, type: grafana-pyroscope-datasource, url: "http://pyroscope.pyroscope.svc.cluster.local:4040", isDefault: false }
 
   loki:
@@ -220,11 +217,12 @@ applications:
 
   mimir:
     enabled: true
-    namespace: mimir
+    namespace: monitoring-stack-server
     syncWave: "32"
     source: { type: helm, repoURL: "https://grafana.github.io/helm-charts", chart: mimir-distributed, targetRevision: 6.2.0 }
     values:
       minio: { enabled: false }
+      kafka: { enabled: false }
       global:
         extraEnvFrom: [{ secretRef: { name: object-storage-credentials } }]
       mimir:
@@ -234,6 +232,8 @@ applications:
           blocks_storage: { s3: { bucket_name: mimir-blocks, access_key_id: "${AWS_ACCESS_KEY_ID}", secret_access_key: "${AWS_SECRET_ACCESS_KEY}" } }
           ruler_storage: { s3: { bucket_name: mimir-ruler, access_key_id: "${AWS_ACCESS_KEY_ID}", secret_access_key: "${AWS_SECRET_ACCESS_KEY}" } }
           alertmanager_storage: { s3: { bucket_name: mimir-alertmanager, access_key_id: "${AWS_ACCESS_KEY_ID}", secret_access_key: "${AWS_SECRET_ACCESS_KEY}" } }
+          ingest_storage: { enabled: true, kafka: { address: "redpanda.redpanda.svc.cluster.local:9093", topic: mimir-ingest, auto_create_topic_enabled: true, auto_create_topic_default_partitions: 3 } }
+          ingester: { push_grpc_method_enabled: false }
       ingester: { replicas: 1 }
       store_gateway: { replicas: 1 }
       distributor: { replicas: 1 }
@@ -241,7 +241,7 @@ applications:
 
   tempo:
     enabled: true
-    namespace: tempo
+    namespace: monitoring-stack-server
     syncWave: "32"
     source: { type: helm, repoURL: "https://grafana.github.io/helm-charts", chart: tempo-distributed, targetRevision: 1.61.3 }
     values:
@@ -308,7 +308,7 @@ applications:
               forward_to = [prometheus.remote_write.mimir.receiver]
             }
             prometheus.remote_write "mimir" {
-              endpoint { url = "http://mimir-nginx.mimir.svc.cluster.local/api/v1/push" }
+              endpoint { url = "http://mimir-nginx.monitoring-stack-server.svc.cluster.local/api/v1/push" }
             }
 
   platform-gateway:
@@ -338,8 +338,8 @@ applications:
           - { name: awx, namespace: awx, hostname: awx.dev.example.internal, service: monitoring-awx-service, port: 80 }
         ingestionRoutes:
           - { name: loki-ingest, namespace: loki, hostname: loki.ingest.dev.example.internal, service: loki-gateway, port: 80, basicAuthSecret: ingestion-basic-auth }
-          - { name: mimir-ingest, namespace: mimir, hostname: mimir.ingest.dev.example.internal, service: mimir-nginx, port: 80, basicAuthSecret: ingestion-basic-auth }
-          - { name: tempo-ingest, namespace: tempo, hostname: tempo.ingest.dev.example.internal, service: tempo-distributor, port: 4318, basicAuthSecret: ingestion-basic-auth }
+          - { name: mimir-ingest, namespace: monitoring-stack-server, hostname: mimir.ingest.dev.example.internal, service: mimir-nginx, port: 80, basicAuthSecret: ingestion-basic-auth }
+          - { name: tempo-ingest, namespace: monitoring-stack-server, hostname: tempo.ingest.dev.example.internal, service: tempo-distributor, port: 4318, basicAuthSecret: ingestion-basic-auth }
           - { name: pyroscope-ingest, namespace: pyroscope, hostname: pyroscope.ingest.dev.example.internal, service: pyroscope, port: 4040, basicAuthSecret: ingestion-basic-auth }
 
   awx-operator:

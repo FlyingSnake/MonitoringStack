@@ -6,6 +6,12 @@ Keycloak과 MinIO의 Bitnami 기반 이미지는 제거된 기존 `bitnami/*` �
 
 `dev`는 단일 Raft Vault를 운영자가 초기화·Unseal합니다. `stg`, `prd`는 EKS IRSA와 AWS KMS Auto-Unseal을 사용하며, `REQUIRED_*` 값은 실제 인프라 값으로 교체하기 전에는 배포하지 않습니다.
 
+## Mimir·Tempo 서버 namespace 및 Kafka
+
+Mimir와 Tempo는 `monitoring-stack-server` namespace에 함께 배포됩니다. 두 서비스는 공용 Redpanda Kafka를 사용하며, Mimir는 `mimir-ingest`, Tempo는 `tempo` topic을 사용합니다. `dev`의 topic partition은 1개이고, `stg` 기본값은 3개입니다. 운영 환경은 `REQUIRED_KAFKA_BROKER`에 외부 broker의 `host:port`를 주입하고, topic을 사전에 생성한 뒤 `auto_create_topic_enabled: false`를 유지합니다.
+
+기존 `mimir`·`tempo` namespace에서 이동할 때는 새 `monitoring-stack-server`의 Secret과 workload readiness를 먼저 확인합니다. 그 뒤 Argo CD에서 Mimir와 Tempo Application을 `prune` 옵션으로 수동 Sync해 이전 namespace 리소스를 제거합니다. 데이터는 S3/MinIO bucket에 유지되지만, namespace PVC나 memberlist ring 상태는 재생성되므로 운영 환경에서는 백업과 수집 중단 창을 먼저 승인해야 합니다. 문제 발생 시에는 Application destination과 Gateway/Grafana endpoint를 이전 namespace로 되돌리고 prune 없이 재동기화합니다.
+
 ## Vault 초기 bootstrap
 
 Vault 자체는 GitOps로 설치하지만 다음 작업은 root token 또는 recovery key가 필요하므로 운영자가 안전한 세션에서 수행합니다.

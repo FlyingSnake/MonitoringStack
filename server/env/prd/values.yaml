@@ -50,6 +50,8 @@ applications:
       mimir:
         structuredConfig:
           common: { storage: { backend: s3, s3: { endpoint: REQUIRED_S3_ENDPOINT, insecure: false } } }
+          ingest_storage: { enabled: true, kafka: { address: REQUIRED_KAFKA_BROKER, topic: mimir-ingest, auto_create_topic_enabled: false } }
+          ingester: { push_grpc_method_enabled: false }
       ingester: { replicas: 3 }
       store_gateway: { replicas: 3 }
       distributor: { replicas: 3 }
@@ -87,6 +89,6 @@ applications:
           - { name: awx, namespace: awx, hostname: awx.prd.example.internal, service: monitoring-awx-service, port: 80 }
         ingestionRoutes:
           - { name: loki-ingest, namespace: loki, hostname: loki.ingest.prd.example.internal, service: loki-gateway, port: 80, basicAuthSecret: ingestion-basic-auth }
-          - { name: mimir-ingest, namespace: mimir, hostname: mimir.ingest.prd.example.internal, service: mimir-nginx, port: 80, basicAuthSecret: ingestion-basic-auth }
-          - { name: tempo-ingest, namespace: tempo, hostname: tempo.ingest.prd.example.internal, service: tempo-distributor, port: 4318, basicAuthSecret: ingestion-basic-auth }
+          - { name: mimir-ingest, namespace: monitoring-stack-server, hostname: mimir.ingest.prd.example.internal, service: mimir-nginx, port: 80, basicAuthSecret: ingestion-basic-auth }
+          - { name: tempo-ingest, namespace: monitoring-stack-server, hostname: tempo.ingest.prd.example.internal, service: tempo-distributor, port: 4318, basicAuthSecret: ingestion-basic-auth }
           - { name: pyroscope-ingest, namespace: pyroscope, hostname: pyroscope.ingest.prd.example.internal, service: pyroscope, port: 4040, basicAuthSecret: ingestion-basic-auth }
