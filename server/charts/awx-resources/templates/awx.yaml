@@ -1,10 +1,4 @@
 {{- if .Values.awx.enabled }}
-apiVersion: v1
-kind: ServiceAccount
-metadata:
-  name: {{ .Values.awx.taskServiceAccount }}
-  namespace: awx
----
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
@@ -37,7 +31,6 @@ spec:
   service_type: ClusterIP
   admin_user: admin
   admin_password_secret: {{ .Values.awx.adminPasswordSecret }}
-  task_service_account: {{ .Values.awx.taskServiceAccount }}
   projects_persistence: {{ .Values.awx.projectsPersistence }}
   projects_storage_size: {{ .Values.awx.projectsStorageSize }}
   postgres_storage_requirements:
