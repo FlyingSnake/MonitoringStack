@@ -1,0 +1,76 @@
+---
+- name: Vault 및 수집 인증 변수 확인
+  ansible.builtin.assert:
+    that:
+      - vault_addr | length > 0
+      - vault_kubernetes_role | length > 0
+
+- name: Alloy namespace 생성
+  kubernetes.core.k8s:
+    api_version: v1
+    kind: Namespace
+    name: "{{ alloy_namespace }}"
+    state: present
+
+- name: AWX 실행 Pod의 Kubernetes ServiceAccount JWT 읽기
+  ansible.builtin.slurp:
+    src: "{{ vault_service_account_token_path }}"
+  register: alloy_vault_jwt
+  no_log: true
+
+- name: Vault Kubernetes Auth 로그인
+  ansible.builtin.uri:
+    url: "{{ vault_addr }}/v1/auth/kubernetes/login"
+    method: POST
+    body_format: json
+    body:
+      role: "{{ vault_kubernetes_role }}"
+      jwt: "{{ alloy_vault_jwt.content | b64decode }}"
+    return_content: true
+    validate_certs: "{{ vault_validate_certs }}"
+  register: alloy_vault_login
+  no_log: true
+
+- name: 수집 Basic Auth 자격증명 읽기
+  ansible.builtin.uri:
+    url: "{{ vault_addr }}/v1/{{ vault_ingestion_path }}"
+    method: GET
+    headers:
+      X-Vault-Token: "{{ alloy_vault_login.json.auth.client_token }}"
+    return_content: true
+    validate_certs: "{{ vault_validate_certs }}"
+  register: alloy_ingestion_credentials
+  no_log: true
+
+- name: Alloy 대상별 단기 mTLS 인증서 발급
+  ansible.builtin.uri:
+    url: "{{ vault_addr }}/v1/{{ vault_pki_issue_path }}"
+    method: POST
+    headers:
+      X-Vault-Token: "{{ alloy_vault_login.json.auth.client_token }}"
+    body_format: json
+    body:
+      common_name: "alloy-{{ monitoring_environment }}-{{ inventory_hostname }}"
+      ttl: 24h
+    return_content: true
+    validate_certs: "{{ vault_validate_certs }}"
+  register: alloy_client_certificate
+  no_log: true
+
+- name: Kubernetes Alloy 수집 인증 Secret 적용
+  kubernetes.core.k8s:
+    state: present
+    definition:
+      apiVersion: v1
+      kind: Secret
+      metadata:
+        name: "{{ alloy_ingest_secret_name }}"
+        namespace: "{{ alloy_namespace }}"
+      type: Opaque
+      stringData:
+        INGEST_USERNAME: "{{ alloy_ingestion_credentials.json.data.data.username }}"
+        INGEST_PASSWORD: "{{ alloy_ingestion_credentials.json.data.data.password }}"
+        ca.crt: "{{ alloy_client_certificate.json.data.issuing_ca }}"
+        tls.crt: "{{ alloy_client_certificate.json.data.certificate }}"
+        tls.key: "{{ alloy_client_certificate.json.data.private_key }}"
+  no_log: true

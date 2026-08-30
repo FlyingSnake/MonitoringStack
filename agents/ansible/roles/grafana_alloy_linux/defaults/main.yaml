@@ -8,9 +8,13 @@ alloy_config_module_path: agents/alloy/modules/linux/alloy.alloy
 alloy_config_pull_frequency: 5m
 alloy_download_path: /tmp/alloy-linux-amd64.zip
 alloy_extract_path: /tmp/alloy-linux-amd64
+alloy_credentials_path: /etc/alloy/credentials
 alloy_environment:
-  LOKI_URL: https://loki.dev.example.internal/loki/api/v1/push
-  MIMIR_REMOTE_WRITE_URL: https://mimir.dev.example.internal/api/v1/push
+  LOKI_URL: https://loki.ingest.dev.example.internal/loki/api/v1/push
+  MIMIR_REMOTE_WRITE_URL: https://mimir.ingest.dev.example.internal/api/v1/push
   MONITORING_ENVIRONMENT: dev
-  PYROSCOPE_URL: https://pyroscope.dev.example.internal
-  TEMPO_OTLP_GRPC_ENDPOINT: tempo.dev.example.internal:4317
+  PYROSCOPE_URL: https://pyroscope.ingest.dev.example.internal
+  TEMPO_OTLP_HTTP_ENDPOINT: https://tempo.ingest.dev.example.internal
+  ALLOY_TLS_CA_FILE: /etc/alloy/credentials/ca.crt
+  ALLOY_TLS_CERT_FILE: /etc/alloy/credentials/tls.crt
+  ALLOY_TLS_KEY_FILE: /etc/alloy/credentials/tls.key

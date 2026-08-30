@@ -6,3 +6,13 @@ alloy_config_module_path: agents/alloy/modules/windows/alloy.alloy
 alloy_config_pull_frequency: 5m
 alloy_install_dir: C:\\Program Files\\GrafanaLabs\\Alloy
 alloy_installer_url: "https://github.com/grafana/alloy/releases/download/v{{ alloy_version }}/alloy-installer-windows-amd64.exe"
+alloy_credentials_path: C:\\ProgramData\\GrafanaLabs\\Alloy\\credentials
+alloy_environment:
+  LOKI_URL: https://loki.ingest.dev.example.internal/loki/api/v1/push
+  MIMIR_REMOTE_WRITE_URL: https://mimir.ingest.dev.example.internal/api/v1/push
+  MONITORING_ENVIRONMENT: dev
+  PYROSCOPE_URL: https://pyroscope.ingest.dev.example.internal
+  TEMPO_OTLP_HTTP_ENDPOINT: https://tempo.ingest.dev.example.internal
+  ALLOY_TLS_CA_FILE: C:/ProgramData/GrafanaLabs/Alloy/credentials/ca.crt
+  ALLOY_TLS_CERT_FILE: C:/ProgramData/GrafanaLabs/Alloy/credentials/tls.crt
+  ALLOY_TLS_KEY_FILE: C:/ProgramData/GrafanaLabs/Alloy/credentials/tls.key

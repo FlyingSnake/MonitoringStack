@@ -28,22 +28,40 @@ data:
             scm_type: git
             scm_url: {{ .Values.awx.repository | quote }}
             scm_branch: {{ .Values.awx.revision | quote }}
+            scm_update_on_launch: true
             state: present
         - awx.awx.inventory:
             name: MonitoringStack Git Inventory
             organization: MonitoringStack
             state: present
+        - awx.awx.inventory_source:
+            name: MonitoringStack Dev Kubernetes Inventory
+            inventory: MonitoringStack Git Inventory
+            source: scm
+            source_project: MonitoringStack Agents
+            source_path: agents/ansible/inventories/dev/k8s/hosts.yml
+            update_on_launch: true
+            state: present
+        - awx.awx.execution_environment:
+            name: MonitoringStack AWX EE
+            image: {{ .Values.awx.image | quote }}
+            pull: missing
+            state: present
         - awx.awx.job_template:
-            name: "Install Alloy - {{ "{{ item.target }}" }}"
+            name: "Install Alloy - dev Kubernetes"
             organization: MonitoringStack
             inventory: MonitoringStack Git Inventory
             project: MonitoringStack Agents
-            playbook: "agents/ansible/playbooks/install-alloy-{{ "{{ item.target }}" }}.yaml"
+            playbook: agents/ansible/playbooks/install-alloy-kubernetes.yaml
+            execution_environment: MonitoringStack AWX EE
+            extra_vars:
+              monitoring_environment: dev
+              vault_addr: {{ .Values.awx.vault.server | quote }}
+              vault_kubernetes_role: {{ .Values.awx.vault.role | quote }}
+              vault_pki_issue_path: {{ .Values.awx.vault.pkiPath | quote }}
+              vault_ingestion_path: {{ .Values.awx.vault.ingestionPath | quote }}
+              alloy_config_revision: {{ .Values.awx.revision | quote }}
             state: present
-          loop:
-            - { target: linux }
-            - { target: windows }
-            - { target: kubernetes }
 ---
 apiVersion: batch/v1
 kind: Job

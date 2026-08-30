@@ -4,6 +4,15 @@ declare "pipeline" {
   loki.write "default" {
     endpoint {
       url = sys.env("LOKI_URL")
+      basic_auth {
+        username = sys.env("INGEST_USERNAME")
+        password = sys.env("INGEST_PASSWORD")
+      }
+      tls_config {
+        ca_file   = sys.env("ALLOY_TLS_CA_FILE")
+        cert_file = sys.env("ALLOY_TLS_CERT_FILE")
+        key_file  = sys.env("ALLOY_TLS_KEY_FILE")
+      }
     }
     external_labels = {
       environment = sys.env("MONITORING_ENVIRONMENT"),
@@ -26,10 +35,22 @@ declare "pipeline" {
     }
   }
 
-  otelcol.exporter.otlp "tempo" {
+  otelcol.auth.basic "ingest" {
+    client_auth {
+      username = sys.env("INGEST_USERNAME")
+      password = sys.env("INGEST_PASSWORD")
+    }
+  }
+
+  otelcol.exporter.otlphttp "tempo" {
     client {
-      endpoint = sys.env("TEMPO_OTLP_GRPC_ENDPOINT")
-      tls { insecure = false }
+      endpoint = sys.env("TEMPO_OTLP_HTTP_ENDPOINT")
+      auth     = otelcol.auth.basic.ingest.handler
+      tls {
+        ca_file   = sys.env("ALLOY_TLS_CA_FILE")
+        cert_file = sys.env("ALLOY_TLS_CERT_FILE")
+        key_file  = sys.env("ALLOY_TLS_KEY_FILE")
+      }
     }
   }
 }

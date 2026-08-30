@@ -3,4 +3,5 @@
   hosts: alloy_kubernetes
   gather_facts: false
   roles:
+    - role: grafana_alloy_kubernetes_credentials
     - role: grafana_alloy_kubernetes

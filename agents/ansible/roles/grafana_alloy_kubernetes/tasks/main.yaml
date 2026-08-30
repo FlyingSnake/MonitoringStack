@@ -21,8 +21,21 @@
     values:
       controller:
         type: daemonset
+        volumes:
+          extra:
+            - name: ingest-client
+              secret:
+                secretName: "{{ alloy_ingest_secret_name }}"
       alloy:
         extraEnv: "{{ alloy_environment | dict2items(key_name='name', value_name='value') }}"
+        envFrom:
+          - secretRef:
+              name: "{{ alloy_ingest_secret_name }}"
+        mounts:
+          extra:
+            - name: ingest-client
+              mountPath: "{{ alloy_credentials_mount_path }}"
+              readOnly: true
         extraPorts:
           - { name: otlp-grpc, port: 4317, targetPort: 4317, protocol: TCP }
           - { name: otlp-http, port: 4318, targetPort: 4318, protocol: TCP }

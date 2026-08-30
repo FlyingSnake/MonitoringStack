@@ -6,9 +6,9 @@ alloy:
   version: 1.11.2
   config: { repository: "https://github.com/FlyingSnake/MonitoringStack.git", revision: dev, modulePath: agents/alloy/modules/windows/alloy.alloy, pullFrequency: 5m }
 endpoints:
-  loki: https://loki.dev.example.internal/loki/api/v1/push
-  mimir: https://mimir.dev.example.internal/api/v1/push
-  tempoGrpc: tempo.dev.example.internal:4317
-  pyroscope: https://pyroscope.dev.example.internal
+  loki: https://loki.ingest.dev.example.internal/loki/api/v1/push
+  mimir: https://mimir.ingest.dev.example.internal/api/v1/push
+  tempoHttp: https://tempo.ingest.dev.example.internal
+  pyroscope: https://pyroscope.ingest.dev.example.internal
 security: { authSecretRef: alloy-write-credentials, tlsSecretRef: alloy-client-tls }
 features: { logs: true, metrics: true, traces: true, profiling: false }
