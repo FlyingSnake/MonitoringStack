@@ -85,6 +85,10 @@ spec:
           image: {{ .Values.awx.image | quote }}
           command: [ansible-playbook, /config/bootstrap.yml]
           env:
+            - name: HOME
+              value: /tmp
+            - name: ANSIBLE_LOCAL_TEMP
+              value: /tmp/.ansible/tmp
             - name: CONTROLLER_PASSWORD
               valueFrom:
                 secretKeyRef:
