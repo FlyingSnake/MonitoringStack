@@ -61,6 +61,10 @@ data:
               vault_pki_issue_path: {{ .Values.awx.vault.pkiPath | quote }}
               vault_ingestion_path: {{ .Values.awx.vault.ingestionPath | quote }}
               alloy_config_revision: {{ .Values.awx.revision | quote }}
+              alloy_environment:
+{{ toYaml .Values.awx.alloyEnvironment | nindent 16 }}
+              alloy_host_aliases:
+{{ toYaml .Values.awx.alloyHostAliases | nindent 16 }}
             state: present
 ---
 apiVersion: batch/v1

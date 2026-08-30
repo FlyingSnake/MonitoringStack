@@ -36,6 +36,19 @@ applications:
   platform-observability:
     values:
       grafana: { rootUrl: "https://grafana.prd.example.internal", keycloakUrl: "https://keycloak.prd.example.internal", replicas: 2 }
+  awx-config:
+    values:
+      awx:
+        alloyEnvironment:
+          LOKI_URL: "https://loki.ingest.prd.example.internal/loki/api/v1/push"
+          MIMIR_REMOTE_WRITE_URL: "https://mimir.ingest.prd.example.internal/api/v1/push"
+          MONITORING_CLUSTER: prd
+          MONITORING_ENVIRONMENT: prd
+          PYROSCOPE_URL: "https://pyroscope.ingest.prd.example.internal"
+          TEMPO_OTLP_HTTP_ENDPOINT: "https://tempo.ingest.prd.example.internal"
+          ALLOY_TLS_CA_FILE: /etc/alloy/credentials/ca.crt
+          ALLOY_TLS_CERT_FILE: /etc/alloy/credentials/tls.crt
+          ALLOY_TLS_KEY_FILE: /etc/alloy/credentials/tls.key
   loki:
     values:
       loki:

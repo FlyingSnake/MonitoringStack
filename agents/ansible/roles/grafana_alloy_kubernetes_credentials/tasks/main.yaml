@@ -5,13 +5,6 @@
       - vault_addr | length > 0
       - vault_kubernetes_role | length > 0
 
-- name: Alloy namespace 생성
-  kubernetes.core.k8s:
-    api_version: v1
-    kind: Namespace
-    name: "{{ alloy_namespace }}"
-    state: present
-
 - name: AWX 실행 Pod의 Kubernetes ServiceAccount JWT 읽기
   ansible.builtin.slurp:
     src: "{{ vault_service_account_token_path }}"
