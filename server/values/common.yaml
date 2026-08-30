@@ -166,6 +166,9 @@ applications:
       # Redpanda는 dev/stg 내부 NetworkPolicy 경계에서만 사용한다. Mimir와 Tempo의
       # Kafka 클라이언트는 이 내부 평문 리스너를 사용하며, prd는 외부 TLS Kafka를 참조한다.
       tls: { enabled: false }
+      # Tempo는 Kafka topic을 자동 생성하지 않으므로, dev/stg의 전용 Redpanda에서만
+      # 토픽 자동 생성을 허용한다. prd는 외부 Kafka의 사전 생성 토픽을 사용한다.
+      config: { cluster: { auto_create_topics_enabled: true } }
 
   grafana-operator:
     enabled: true
