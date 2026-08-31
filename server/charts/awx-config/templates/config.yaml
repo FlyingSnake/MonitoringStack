@@ -59,11 +59,6 @@ data:
             project: MonitoringStack Agents
             playbook: agents/ansible/playbooks/install-alloy-kubernetes.yaml
             execution_environment: MonitoringStack AWX EE
-            environment:
-              # AWX는 저장소 루트에서 실행하므로 agents/ansible 하위의
-              # 역할과 설정 파일을 명시적으로 실행 환경에 연결한다.
-              ANSIBLE_CONFIG: /runner/project/agents/ansible/ansible.cfg
-              ANSIBLE_ROLES_PATH: /runner/project/agents/ansible/roles
             extra_vars:
               monitoring_environment: dev
               vault_addr: {{ .Values.awx.vault.server | quote }}
