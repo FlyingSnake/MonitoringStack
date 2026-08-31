@@ -22,6 +22,15 @@ data:
         - awx.awx.organization:
             name: MonitoringStack
             state: present
+        - awx.awx.execution_environment:
+            name: MonitoringStack AWX EE
+            image: {{ .Values.awx.image | quote }}
+            pull: missing
+            state: present
+          register: monitoring_awx_execution_environment
+        - awx.awx.settings:
+            name: DEFAULT_EXECUTION_ENVIRONMENT
+            value: "{{ "{{ monitoring_awx_execution_environment.id }}" }}"
         - awx.awx.project:
             name: MonitoringStack Agents
             organization: MonitoringStack
@@ -29,6 +38,7 @@ data:
             scm_url: {{ .Values.awx.repository | quote }}
             scm_branch: {{ .Values.awx.revision | quote }}
             scm_update_on_launch: true
+            update_project: true
             state: present
         - awx.awx.inventory:
             name: MonitoringStack Git Inventory
@@ -41,11 +51,6 @@ data:
             source_project: MonitoringStack Agents
             source_path: agents/ansible/inventories/dev/k8s/hosts.yml
             update_on_launch: true
-            state: present
-        - awx.awx.execution_environment:
-            name: MonitoringStack AWX EE
-            image: {{ .Values.awx.image | quote }}
-            pull: missing
             state: present
         - awx.awx.job_template:
             name: "Install Alloy - dev Kubernetes"
