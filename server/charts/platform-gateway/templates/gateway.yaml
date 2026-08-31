@@ -21,6 +21,31 @@ metadata:
   name: cert-manager-vault-issuer
   namespace: {{ .Values.gateway.namespace }}
 ---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: cert-manager-vault-token-requester
+  namespace: {{ .Values.gateway.namespace }}
+rules:
+  - apiGroups: [""]
+    resources: ["serviceaccounts/token"]
+    resourceNames: ["cert-manager-vault-issuer"]
+    verbs: ["create"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: cert-manager-vault-token-requester
+  namespace: {{ .Values.gateway.namespace }}
+subjects:
+  - kind: ServiceAccount
+    name: cert-manager
+    namespace: cert-manager
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: cert-manager-vault-token-requester
+---
 apiVersion: cert-manager.io/v1
 kind: Certificate
 metadata:
