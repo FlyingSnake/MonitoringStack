@@ -52,6 +52,7 @@ metadata:
   namespace: {{ .Values.gateway.namespace }}
 spec:
   secretName: {{ .Values.gateway.tls.uiSecretName }}
+  commonName: {{ index .Values.gateway.tls.uiDnsNames 0 | quote }}
   issuerRef:
     name: {{ .Values.gateway.issuer.name }}
     kind: {{ .Values.gateway.issuer.kind }}
@@ -65,6 +66,7 @@ metadata:
   namespace: {{ .Values.gateway.namespace }}
 spec:
   secretName: {{ .Values.gateway.tls.ingestSecretName }}
+  commonName: {{ index .Values.gateway.tls.ingestDnsNames 0 | quote }}
   issuerRef:
     name: {{ .Values.gateway.issuer.name }}
     kind: {{ .Values.gateway.issuer.kind }}
