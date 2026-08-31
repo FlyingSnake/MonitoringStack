@@ -79,8 +79,43 @@ spec:
     - to:
         - namespaceSelector:
             matchLabels:
+              kubernetes.io/metadata.name: {{ $.Values.gatewayNamespace }}
+      ports:
+        - { protocol: TCP, port: 443 }
+{{- if $.Values.apiServerCidrs }}
+    - to:
+{{- range $.Values.apiServerCidrs }}
+        - ipBlock:
+            cidr: {{ . }}
+{{- end }}
+      ports:
+        - { protocol: TCP, port: 443 }
+{{- end }}
+    - to:
+        - namespaceSelector:
+            matchLabels:
               kubernetes.io/metadata.name: kube-system
       ports:
         - { protocol: UDP, port: 53 }
         - { protocol: TCP, port: 53 }
+{{- end }}
+{{- range .Values.externalEgress }}
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ .name }}
+  namespace: {{ .namespace }}
+spec:
+  podSelector:
+{{ toYaml .podSelector | nindent 4 }}
+  policyTypes: [Egress]
+  egress:
+    - to:
+{{- range .cidrs }}
+        - ipBlock:
+            cidr: {{ . }}
+{{- end }}
+      ports:
+{{ toYaml .ports | nindent 8 }}
 {{- end }}

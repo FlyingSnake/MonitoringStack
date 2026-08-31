@@ -3,3 +3,5 @@ bootstrapServiceAccounts: []
 protectedNamespaces: []
 gatewayNamespace: gateway-system
 admissionWebhooks: []
+apiServerCidrs: []
+externalEgress: []

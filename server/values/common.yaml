@@ -81,6 +81,12 @@ applications:
         - { name: external-secrets-vault, namespace: external-secrets }
       protectedNamespaces: [keycloak, minio, redpanda, loki, monitoring-stack-server, pyroscope, grafana, blackbox, awx, observability, alloy]
       gatewayNamespace: gateway-system
+      externalEgress:
+        - name: awx-scm-https
+          namespace: awx
+          podSelector: { matchLabels: { app.kubernetes.io/name: monitoring-awx-task } }
+          cidrs: [0.0.0.0/0]
+          ports: [{ protocol: TCP, port: 443 }]
 
   platform-secrets:
     enabled: true

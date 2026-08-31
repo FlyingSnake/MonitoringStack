@@ -2,6 +2,9 @@ gitRevision: stg
 environment: stg
 baseDomain: example.internal
 applications:
+  platform-foundation:
+    values:
+      apiServerCidrs: [REQUIRED_KUBERNETES_API_CIDR]
   vault:
     values:
       server:
