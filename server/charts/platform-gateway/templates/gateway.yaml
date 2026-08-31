@@ -80,7 +80,11 @@ spec:
       sectionName: {{ $.Values.gateway.uiListener }}
   hostnames: [{{ .hostname | quote }}]
   rules:
-    - backendRefs:
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /
+      backendRefs:
         - name: {{ .service }}
           port: {{ .port }}
 {{- end }}
@@ -98,7 +102,11 @@ spec:
       sectionName: {{ $.Values.gateway.ingestListener }}
   hostnames: [{{ .hostname | quote }}]
   rules:
-    - backendRefs:
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /
+      backendRefs:
         - name: {{ .service }}
           port: {{ .port }}
 ---
