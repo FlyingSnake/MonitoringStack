@@ -65,6 +65,7 @@ data:
               vault_kubernetes_role: {{ .Values.awx.vault.role | quote }}
               vault_pki_issue_path: {{ .Values.awx.vault.pkiPath | quote }}
               vault_ingestion_path: {{ .Values.awx.vault.ingestionPath | quote }}
+              alloy_config_repository: {{ .Values.awx.repository | quote }}
               alloy_config_revision: {{ .Values.awx.revision | quote }}
               alloy_environment:
 {{ toYaml .Values.awx.alloyEnvironment | nindent 16 }}

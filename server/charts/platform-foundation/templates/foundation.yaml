@@ -90,6 +90,9 @@ spec:
 {{- end }}
       ports:
         - { protocol: TCP, port: 443 }
+        # Kubernetes Service(443)가 control-plane endpoint(6443)로 DNAT되는
+        # CNI 환경에서도 AWX 등 GitOps 작업 Pod가 API에 접근할 수 있게 한다.
+        - { protocol: TCP, port: 6443 }
 {{- end }}
     - to:
         - namespaceSelector:
