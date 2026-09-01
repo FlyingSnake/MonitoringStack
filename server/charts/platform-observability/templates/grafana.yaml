@@ -1,0 +1,63 @@
+{{- if .Values.grafana.enabled }}
+apiVersion: grafana.integreatly.org/v1beta1
+kind: Grafana
+metadata:
+  name: grafana
+  namespace: grafana
+  labels:
+    dashboards: grafana
+spec:
+  config:
+    server:
+      root_url: {{ .Values.grafana.rootUrl | quote }}
+    auth:
+      disable_login_form: "true"
+    auth.generic_oauth:
+      enabled: "true"
+      name: Keycloak
+      allow_sign_up: "true"
+      client_id: grafana
+      client_secret: $__env{GF_AUTH_GENERIC_OAUTH_CLIENT_SECRET}
+      scopes: openid profile email groups
+      auth_url: {{ printf "%s/realms/%s/protocol/openid-connect/auth" .Values.grafana.keycloakUrl .Values.grafana.realm | quote }}
+      token_url: {{ printf "%s/realms/%s/protocol/openid-connect/token" .Values.grafana.keycloakUrl .Values.grafana.realm | quote }}
+      api_url: {{ printf "%s/realms/%s/protocol/openid-connect/userinfo" .Values.grafana.keycloakUrl .Values.grafana.realm | quote }}
+      role_attribute_path: "contains(groups[*], 'platform-admin') && 'Admin' || contains(groups[*], 'observability-viewer') && 'Viewer' || 'Viewer'"
+  deployment:
+    spec:
+      replicas: {{ .Values.grafana.replicas }}
+      template:
+        spec:
+          containers:
+            - name: grafana
+              env:
+                - name: GF_AUTH_GENERIC_OAUTH_CLIENT_SECRET
+                  valueFrom:
+                    secretKeyRef:
+                      name: {{ .Values.grafana.oidcSecret }}
+                      key: grafana-client-secret
+  service:
+    spec:
+      type: ClusterIP
+{{- range .Values.grafana.datasources }}
+---
+apiVersion: grafana.integreatly.org/v1beta1
+kind: GrafanaDatasource
+metadata:
+  name: {{ .name }}
+  namespace: grafana
+spec:
+  instanceSelector:
+    matchLabels:
+      dashboards: grafana
+  datasource:
+    uid: {{ .uid }}
+    name: {{ .displayName }}
+    type: {{ .type }}
+    access: proxy
+    url: {{ .url }}
+    isDefault: {{ .isDefault | default false }}
+    jsonData:
+      {{- toYaml (.jsonData | default (dict)) | nindent 6 }}
+{{- end }}
+{{- end }}

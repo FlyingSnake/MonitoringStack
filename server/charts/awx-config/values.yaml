@@ -1,0 +1,31 @@
+awx:
+  enabled: false
+  name: monitoring-awx
+  url: http://monitoring-awx-service.awx.svc.cluster.local
+  adminSecret: awx-admin
+  oidcSecret: oidc-client-secrets
+  image: quay.io/ansible/awx-ee:24.6.1
+  repository: https://github.com/FlyingSnake/MonitoringStack.git
+  revision: dev
+  vault:
+    server: http://vault.vault.svc.cluster.local:8200
+    role: awx-agent
+    pkiPath: pki_int/issue/monitoring-client
+    ingestionPath: monitoring/data/ingestion
+  executionPodSpec:
+    apiVersion: v1
+    kind: Pod
+    spec:
+      serviceAccountName: monitoring-awx
+      automountServiceAccountToken: true
+  alloyEnvironment:
+    LOKI_URL: https://loki.ingest.dev.example.internal/loki/api/v1/push
+    MIMIR_REMOTE_WRITE_URL: https://mimir.ingest.dev.example.internal/api/v1/push
+    MONITORING_CLUSTER: dev
+    MONITORING_ENVIRONMENT: dev
+    PYROSCOPE_URL: https://pyroscope.ingest.dev.example.internal
+    TEMPO_OTLP_HTTP_ENDPOINT: https://tempo.ingest.dev.example.internal
+    ALLOY_TLS_CA_FILE: /etc/alloy/credentials/ca.crt
+    ALLOY_TLS_CERT_FILE: /etc/alloy/credentials/tls.crt
+    ALLOY_TLS_KEY_FILE: /etc/alloy/credentials/tls.key
+  alloyHostAliases: []

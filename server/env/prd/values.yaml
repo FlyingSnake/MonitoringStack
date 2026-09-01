@@ -1,0 +1,110 @@
+gitRevision: main
+environment: prd
+baseDomain: example.internal
+applications:
+  platform-foundation:
+    values:
+      apiServerCidrs: [REQUIRED_KUBERNETES_API_CIDR]
+  vault:
+    values:
+      server:
+        standalone: { enabled: false }
+        ha:
+          enabled: true
+          replicas: 3
+          raft:
+            enabled: true
+            setNodeId: true
+            config: |
+              ui = true
+              listener "tcp" { tls_disable = 1 address = "[::]:8200" cluster_address = "[::]:8201" }
+              seal "awskms" { region = "REQUIRED_AWS_REGION" kms_key_id = "REQUIRED_KMS_KEY_ARN" }
+              storage "raft" { path = "/vault/data" }
+              service_registration "kubernetes" {}
+        serviceAccount:
+          create: true
+          annotations: { eks.amazonaws.com/role-arn: REQUIRED_IRSA_ROLE_ARN }
+        dataStorage: { enabled: true, size: 100Gi, storageClass: REQUIRED_STORAGE_CLASS }
+        auditStorage: { enabled: true, size: 50Gi, storageClass: REQUIRED_STORAGE_CLASS }
+  minio: { enabled: false }
+  redpanda: { enabled: false }
+  keycloak:
+    values:
+      postgresql:
+        primary: { persistence: { enabled: true, size: 50Gi, storageClass: REQUIRED_STORAGE_CLASS } }
+  platform-identity:
+    values:
+      keycloak:
+        hosts: { argocd: "https://argocd.prd.example.internal", grafana: "https://grafana.prd.example.internal", awx: "https://awx.prd.example.internal" }
+  platform-observability:
+    values:
+      grafana: { rootUrl: "https://grafana.prd.example.internal", keycloakUrl: "https://keycloak.prd.example.internal", replicas: 2 }
+  awx-config:
+    values:
+      awx:
+        alloyEnvironment:
+          LOKI_URL: "https://loki.ingest.prd.example.internal/loki/api/v1/push"
+          MIMIR_REMOTE_WRITE_URL: "https://mimir.ingest.prd.example.internal/api/v1/push"
+          MONITORING_CLUSTER: prd
+          MONITORING_ENVIRONMENT: prd
+          PYROSCOPE_URL: "https://pyroscope.ingest.prd.example.internal"
+          TEMPO_OTLP_HTTP_ENDPOINT: "https://tempo.ingest.prd.example.internal"
+          ALLOY_TLS_CA_FILE: /etc/alloy/credentials/ca.crt
+          ALLOY_TLS_CERT_FILE: /etc/alloy/credentials/tls.crt
+          ALLOY_TLS_KEY_FILE: /etc/alloy/credentials/tls.key
+  loki:
+    values:
+      loki:
+        commonConfig: { replication_factor: 3 }
+        storage: { s3: { endpoint: REQUIRED_S3_ENDPOINT, insecure: false } }
+      ingester: { replicas: 3, zoneAwareReplication: { enabled: true } }
+      distributor: { replicas: 3 }
+      querier: { replicas: 3 }
+      queryFrontend: { replicas: 2 }
+  mimir:
+    values:
+      mimir:
+        structuredConfig:
+          common: { storage: { backend: s3, s3: { endpoint: REQUIRED_S3_ENDPOINT, insecure: false } } }
+          ingest_storage: { enabled: true, kafka: { address: REQUIRED_KAFKA_BROKER, topic: mimir-ingest, auto_create_topic_enabled: false } }
+          ingester: { push_grpc_method_enabled: false }
+      ingester: { replicas: 3 }
+      store_gateway: { replicas: 3 }
+      distributor: { replicas: 3 }
+      querier: { replicas: 3 }
+  tempo:
+    values:
+      tempo:
+        storage: { trace: { backend: s3, s3: { endpoint: REQUIRED_S3_ENDPOINT, insecure: false, bucket: tempo } } }
+      traces:
+        kafka: { brokers: [REQUIRED_KAFKA_BROKER], topic: tempo }
+      ingester: { replicas: 3 }
+      distributor: { replicas: 3 }
+      querier: { replicas: 3 }
+      queryFrontend: { replicas: 3 }
+  pyroscope:
+    values:
+      pyroscope:
+        config: |
+          storage:
+            backend: s3
+            s3:
+              endpoint: REQUIRED_S3_ENDPOINT
+              bucket_name: pyroscope
+              insecure: false
+  platform-gateway:
+    values:
+      gateway:
+        tls:
+          uiDnsNames: [grafana.prd.example.internal, argocd.prd.example.internal, keycloak.prd.example.internal, awx.prd.example.internal]
+          ingestDnsNames: [loki.ingest.prd.example.internal, mimir.ingest.prd.example.internal, tempo.ingest.prd.example.internal, pyroscope.ingest.prd.example.internal]
+        uiRoutes:
+          - { name: grafana, namespace: grafana, hostname: grafana.prd.example.internal, service: grafana-service, port: 3000 }
+          - { name: keycloak, namespace: keycloak, hostname: keycloak.prd.example.internal, service: keycloak, port: 80 }
+          - { name: argocd, namespace: argocd, hostname: argocd.prd.example.internal, service: argocd-server, port: 80 }
+          - { name: awx, namespace: awx, hostname: awx.prd.example.internal, service: monitoring-awx-service, port: 80 }
+        ingestionRoutes:
+          - { name: loki-ingest, namespace: loki, hostname: loki.ingest.prd.example.internal, service: loki-gateway, port: 80, basicAuthSecret: ingestion-basic-auth }
+          - { name: mimir-ingest, namespace: monitoring-stack-server, hostname: mimir.ingest.prd.example.internal, service: mimir-nginx, port: 80, basicAuthSecret: ingestion-basic-auth }
+          - { name: tempo-ingest, namespace: monitoring-stack-server, hostname: tempo.ingest.prd.example.internal, service: tempo-distributor, port: 4318, basicAuthSecret: ingestion-basic-auth }
+          - { name: pyroscope-ingest, namespace: pyroscope, hostname: pyroscope.ingest.prd.example.internal, service: pyroscope, port: 4040, basicAuthSecret: ingestion-basic-auth }

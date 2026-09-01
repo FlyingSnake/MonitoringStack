@@ -18,6 +18,7 @@ Grafana OSS 기반 중앙 관측성 플랫폼과 Grafana Alloy 에이전트를 G
 - 에이전트: `agents/env/<dev|stg|prd>/<linux|windows|k8s>/values.yaml`
 
 전체 아키텍처와 단계별 구현 순서는 [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md)를 참고하세요.
+환경별 배포 승격 규칙은 [BRANCH_STRATEGY.md](BRANCH_STRATEGY.md)를 참고하세요.
 
 ## 운영 원칙
 

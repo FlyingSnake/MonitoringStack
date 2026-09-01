@@ -141,7 +141,7 @@ alloy:
   version: "<pinned-version>"
   config:
     repository: https://github.com/FlyingSnake/MonitoringStack.git
-    revision: main
+    revision: dev
     modulePath: agents/alloy/modules/linux/alloy.alloy
     pullFrequency: 5m
 endpoints:
@@ -173,7 +173,7 @@ security:
 
 ### 6.4 `import.git` 구성 관리
 
-각 호스트에는 작고 변경이 드문 로컬 `config.alloy`만 둔다. 이 파일은 `import.git`으로 이 저장소의 환경/대상 모듈을 주기적으로 가져오고, 모듈은 `declare` 블록만 포함한다. private repository 접근 토큰은 OS/Kubernetes Secret에 설치하고 Git에 넣지 않는다. 모듈 변경은 PR → CI lint/test → main merge → Alloy pull 주기의 흐름으로 반영된다.
+각 호스트에는 작고 변경이 드문 로컬 `config.alloy`만 둔다. 이 파일은 `import.git`으로 이 저장소의 환경/대상 모듈을 주기적으로 가져오고, 모듈은 `declare` 블록만 포함한다. private repository 접근 토큰은 OS/Kubernetes Secret에 설치하고 Git에 넣지 않는다. 모듈 변경은 PR → CI lint/test → 환경 브랜치 병합 → Alloy pull 주기의 흐름으로 반영된다.
 
 ## 7. 검증 및 CI/CD
 
@@ -184,7 +184,7 @@ PR마다 다음을 실행한다.
 3. Ansible `ansible-lint`, inventory parse, `--check` 및 Molecule(가능한 역할).
 4. `alloy fmt` 및 `alloy run`/syntax 검증으로 `agents/alloy` 모듈 테스트.
 5. SOPS 평문/토큰/개인키 탐지 및 정책 검사.
-6. dev 자동 sync → smoke test(각 endpoint write/read, Grafana datasource, AWX job) → stg 승인 → prd 승인 순으로 승격.
+6. `dev` 자동 sync → smoke test(각 endpoint write/read, Grafana datasource, AWX job) → `stg` 승인 → `main`(prd) 승인 순으로 승격.
 
 운영 확인 항목은 수집 성공률, remote-write 오류, object storage 용량, compactor/ring 상태, Alloy configuration reload, AWX job 결과, 인증서 만료를 포함한다.
 

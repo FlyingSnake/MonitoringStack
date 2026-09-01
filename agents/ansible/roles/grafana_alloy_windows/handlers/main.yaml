@@ -1,0 +1,5 @@
+---
+- name: Alloy 서비스 재시작
+  ansible.windows.win_service:
+    name: Alloy
+    state: restarted

@@ -1,0 +1,155 @@
+{{- if .Values.gateway.enabled }}
+apiVersion: cert-manager.io/v1
+kind: Issuer
+metadata:
+  name: {{ .Values.gateway.issuer.name }}
+  namespace: {{ .Values.gateway.namespace }}
+spec:
+  vault:
+    server: {{ .Values.gateway.vault.server | quote }}
+    path: {{ .Values.gateway.vault.signPath | quote }}
+    auth:
+      kubernetes:
+        mountPath: {{ .Values.gateway.vault.kubernetesAuthMount | quote }}
+        role: {{ .Values.gateway.vault.issuerRole | quote }}
+        serviceAccountRef:
+          name: cert-manager-vault-issuer
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: cert-manager-vault-issuer
+  namespace: {{ .Values.gateway.namespace }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: cert-manager-vault-token-requester
+  namespace: {{ .Values.gateway.namespace }}
+rules:
+  - apiGroups: [""]
+    resources: ["serviceaccounts/token"]
+    verbs: ["create"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: cert-manager-vault-token-requester
+  namespace: {{ .Values.gateway.namespace }}
+subjects:
+  - kind: ServiceAccount
+    name: cert-manager
+    namespace: cert-manager
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: cert-manager-vault-token-requester
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: monitoring-ui-tls
+  namespace: {{ .Values.gateway.namespace }}
+spec:
+  secretName: {{ .Values.gateway.tls.uiSecretName }}
+  commonName: {{ index .Values.gateway.tls.uiDnsNames 0 | quote }}
+  issuerRef:
+    name: {{ .Values.gateway.issuer.name }}
+    kind: {{ .Values.gateway.issuer.kind }}
+  dnsNames:
+    {{- toYaml .Values.gateway.tls.uiDnsNames | nindent 4 }}
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: monitoring-ingest-tls
+  namespace: {{ .Values.gateway.namespace }}
+spec:
+  secretName: {{ .Values.gateway.tls.ingestSecretName }}
+  commonName: {{ index .Values.gateway.tls.ingestDnsNames 0 | quote }}
+  issuerRef:
+    name: {{ .Values.gateway.issuer.name }}
+    kind: {{ .Values.gateway.issuer.kind }}
+  dnsNames:
+    {{- toYaml .Values.gateway.tls.ingestDnsNames | nindent 4 }}
+---
+apiVersion: gateway.envoyproxy.io/v1alpha1
+kind: ClientTrafficPolicy
+metadata:
+  name: monitoring-ingest-mtls
+  namespace: {{ .Values.gateway.namespace }}
+spec:
+  targetRefs:
+    - group: gateway.networking.k8s.io
+      kind: Gateway
+      name: {{ .Values.gateway.name }}
+      sectionName: {{ .Values.gateway.ingestListener }}
+  tls:
+    minVersion: "1.2"
+    clientValidation:
+      mode: RequireAndVerify
+      caCertificateRefs:
+        - group: ""
+          kind: Secret
+          name: {{ .Values.gateway.mtlsCaSecret }}
+{{- range .Values.gateway.uiRoutes }}
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: {{ .name }}
+  namespace: {{ .namespace }}
+spec:
+  parentRefs:
+    - name: {{ $.Values.gateway.name }}
+      namespace: {{ $.Values.gateway.namespace }}
+      sectionName: {{ $.Values.gateway.uiListener }}
+  hostnames: [{{ .hostname | quote }}]
+  rules:
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /
+      backendRefs:
+        - name: {{ .service }}
+          port: {{ .port }}
+{{- end }}
+{{- range .Values.gateway.ingestionRoutes }}
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: {{ .name }}
+  namespace: {{ .namespace }}
+spec:
+  parentRefs:
+    - name: {{ $.Values.gateway.name }}
+      namespace: {{ $.Values.gateway.namespace }}
+      sectionName: {{ $.Values.gateway.ingestListener }}
+  hostnames: [{{ .hostname | quote }}]
+  rules:
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /
+      backendRefs:
+        - name: {{ .service }}
+          port: {{ .port }}
+---
+apiVersion: gateway.envoyproxy.io/v1alpha1
+kind: SecurityPolicy
+metadata:
+  name: {{ .name }}-basic-auth
+  namespace: {{ .namespace }}
+spec:
+  targetRefs:
+    - group: gateway.networking.k8s.io
+      kind: HTTPRoute
+      name: {{ .name }}
+  basicAuth:
+    users:
+      group: ""
+      kind: Secret
+      name: {{ .basicAuthSecret }}
+{{- end }}
+{{- end }}

@@ -1,0 +1,72 @@
+gitRevision: stg
+environment: stg
+baseDomain: example.internal
+applications:
+  platform-foundation:
+    values:
+      apiServerCidrs: [REQUIRED_KUBERNETES_API_CIDR]
+  vault:
+    values:
+      server:
+        standalone: { enabled: false }
+        ha:
+          enabled: true
+          replicas: 3
+          raft:
+            enabled: true
+            setNodeId: true
+            config: |
+              ui = true
+              listener "tcp" { tls_disable = 1 address = "[::]:8200" cluster_address = "[::]:8201" }
+              seal "awskms" { region = "REQUIRED_AWS_REGION" kms_key_id = "REQUIRED_KMS_KEY_ARN" }
+              storage "raft" { path = "/vault/data" }
+              service_registration "kubernetes" {}
+        serviceAccount:
+          create: true
+          annotations: { eks.amazonaws.com/role-arn: REQUIRED_IRSA_ROLE_ARN }
+        dataStorage: { enabled: true, size: 50Gi, storageClass: REQUIRED_STORAGE_CLASS }
+        auditStorage: { enabled: true, size: 20Gi, storageClass: REQUIRED_STORAGE_CLASS }
+  minio:
+    values:
+      mode: distributed
+      statefulset: { replicaCount: 4 }
+      defaultBuckets: ""
+  redpanda:
+    values:
+      statefulset: { replicas: 3 }
+  platform-identity:
+    values:
+      keycloak:
+        hosts: { argocd: "https://argocd.stg.example.internal", grafana: "https://grafana.stg.example.internal", awx: "https://awx.stg.example.internal" }
+  platform-observability:
+    values:
+      grafana: { rootUrl: "https://grafana.stg.example.internal", keycloakUrl: "https://keycloak.stg.example.internal", replicas: 2 }
+  awx-config:
+    values:
+      awx:
+        alloyEnvironment:
+          LOKI_URL: "https://loki.ingest.stg.example.internal/loki/api/v1/push"
+          MIMIR_REMOTE_WRITE_URL: "https://mimir.ingest.stg.example.internal/api/v1/push"
+          MONITORING_CLUSTER: stg
+          MONITORING_ENVIRONMENT: stg
+          PYROSCOPE_URL: "https://pyroscope.ingest.stg.example.internal"
+          TEMPO_OTLP_HTTP_ENDPOINT: "https://tempo.ingest.stg.example.internal"
+          ALLOY_TLS_CA_FILE: /etc/alloy/credentials/ca.crt
+          ALLOY_TLS_CERT_FILE: /etc/alloy/credentials/tls.crt
+          ALLOY_TLS_KEY_FILE: /etc/alloy/credentials/tls.key
+  platform-gateway:
+    values:
+      gateway:
+        tls:
+          uiDnsNames: [grafana.stg.example.internal, argocd.stg.example.internal, keycloak.stg.example.internal, awx.stg.example.internal]
+          ingestDnsNames: [loki.ingest.stg.example.internal, mimir.ingest.stg.example.internal, tempo.ingest.stg.example.internal, pyroscope.ingest.stg.example.internal]
+        uiRoutes:
+          - { name: grafana, namespace: grafana, hostname: grafana.stg.example.internal, service: grafana-service, port: 3000 }
+          - { name: keycloak, namespace: keycloak, hostname: keycloak.stg.example.internal, service: keycloak, port: 80 }
+          - { name: argocd, namespace: argocd, hostname: argocd.stg.example.internal, service: argocd-server, port: 80 }
+          - { name: awx, namespace: awx, hostname: awx.stg.example.internal, service: monitoring-awx-service, port: 80 }
+        ingestionRoutes:
+          - { name: loki-ingest, namespace: loki, hostname: loki.ingest.stg.example.internal, service: loki-gateway, port: 80, basicAuthSecret: ingestion-basic-auth }
+          - { name: mimir-ingest, namespace: monitoring-stack-server, hostname: mimir.ingest.stg.example.internal, service: mimir-nginx, port: 80, basicAuthSecret: ingestion-basic-auth }
+          - { name: tempo-ingest, namespace: monitoring-stack-server, hostname: tempo.ingest.stg.example.internal, service: tempo-distributor, port: 4318, basicAuthSecret: ingestion-basic-auth }
+          - { name: pyroscope-ingest, namespace: pyroscope, hostname: pyroscope.ingest.stg.example.internal, service: pyroscope, port: 4040, basicAuthSecret: ingestion-basic-auth }

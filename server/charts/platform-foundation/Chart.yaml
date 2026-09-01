@@ -1,0 +1,5 @@
+apiVersion: v2
+name: monitoring-platform-foundation
+description: Namespaces and least-privilege network boundaries for MonitoringStack
+type: application
+version: 0.1.0

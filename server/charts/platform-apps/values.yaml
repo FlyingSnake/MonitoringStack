@@ -1,0 +1,7 @@
+repository: { url: "https://github.com/FlyingSnake/MonitoringStack.git" }
+gitRevision: dev
+cluster: { server: "https://kubernetes.default.svc" }
+project:
+  name: monitoring-platform
+  sourceRepos: []
+applications: {}

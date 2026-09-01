@@ -1,0 +1,7 @@
+---
+- name: Grafana Alloy 설치 - Linux
+  hosts: alloy_linux
+  become: true
+  gather_facts: true
+  roles:
+    - role: grafana_alloy_linux

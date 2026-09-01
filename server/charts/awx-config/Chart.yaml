@@ -1,0 +1,5 @@
+apiVersion: v2
+name: monitoring-awx-config
+description: Declarative AWX project, inventory and Alloy job template bootstrap
+type: application
+version: 0.1.0

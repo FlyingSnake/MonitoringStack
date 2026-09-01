@@ -1,0 +1,5 @@
+apiVersion: v2
+name: monitoring-platform-identity
+description: Declarative Keycloak realm and OIDC client configuration
+type: application
+version: 0.1.0

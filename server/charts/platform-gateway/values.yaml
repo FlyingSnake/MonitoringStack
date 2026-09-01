@@ -1,0 +1,17 @@
+gateway:
+  enabled: false
+  name: platform-gateway
+  namespace: gateway-system
+  uiListener: ui-https
+  ingestListener: ingest-https
+  issuer:
+    name: vault-pki
+    kind: Issuer
+  tls:
+    uiSecretName: monitoring-ui-tls
+    ingestSecretName: monitoring-ingest-tls
+    uiDnsNames: []
+    ingestDnsNames: []
+  mtlsCaSecret: monitoring-ingest-ca
+  uiRoutes: []
+  ingestionRoutes: []

@@ -1,0 +1,22 @@
+logging {
+  level = "info"
+}
+
+import.git "modules" {
+  repository     = "{{ alloy_config_repository }}"
+  revision       = "{{ alloy_config_revision }}"
+  path           = "{{ alloy_config_module_path }}"
+  pull_frequency = "{{ alloy_config_pull_frequency }}"
+}
+
+modules.pipeline "default" {
+  hostname                 = constants.hostname
+  loki_url                 = sys.env("LOKI_URL")
+  tempo_otlp_http_endpoint = sys.env("TEMPO_OTLP_HTTP_ENDPOINT")
+  ingest_username          = sys.env("INGEST_USERNAME")
+  ingest_password          = sys.env("INGEST_PASSWORD")
+  tls_ca_file              = sys.env("ALLOY_TLS_CA_FILE")
+  tls_cert_file            = sys.env("ALLOY_TLS_CERT_FILE")
+  tls_key_file             = sys.env("ALLOY_TLS_KEY_FILE")
+  monitoring_environment  = sys.env("MONITORING_ENVIRONMENT")
+}

@@ -1,0 +1,72 @@
+---
+- name: Grafana Helm 저장소 등록
+  kubernetes.core.helm_repository:
+    name: grafana
+    repo_url: https://grafana.github.io/helm-charts
+
+- name: Kubernetes Alloy DaemonSet 배포
+  kubernetes.core.helm:
+    name: alloy
+    chart_ref: grafana/alloy
+    chart_version: "{{ alloy_chart_version }}"
+    release_namespace: "{{ alloy_namespace }}"
+    create_namespace: false
+    # PodLogs CRD는 서버 GitOps 영역에서 이미 수명주기를 관리한다. AWX의
+    # namespace 한정 ServiceAccount가 cluster-wide CRD 권한을 갖지 않게 한다.
+    skip_crds: true
+    values:
+      rbac:
+        create: false
+      serviceAccount:
+        create: false
+        name: "{{ alloy_service_account_name }}"
+      controller:
+        type: daemonset
+        volumes:
+          extra:
+            - name: ingest-client
+              secret:
+                secretName: "{{ alloy_ingest_secret_name }}"
+      alloy:
+        hostAliases: "{{ alloy_host_aliases }}"
+        extraEnv: "{{ alloy_environment | dict2items(key_name='name', value_name='value') }}"
+        envFrom:
+          - secretRef:
+              name: "{{ alloy_ingest_secret_name }}"
+        mounts:
+          extra:
+            - name: ingest-client
+              mountPath: "{{ alloy_credentials_mount_path }}"
+              readOnly: true
+        extraPorts:
+          - { name: otlp-grpc, port: 4317, targetPort: 4317, protocol: TCP }
+          - { name: otlp-http, port: 4318, targetPort: 4318, protocol: TCP }
+          - { name: pyroscope, port: 9999, targetPort: 9999, protocol: TCP }
+        configMap:
+          create: true
+          content: |
+            logging {
+              level = "info"
+            }
+
+            import.git "modules" {
+              repository     = "{{ alloy_config_repository }}"
+              revision       = "{{ alloy_config_revision }}"
+              path           = "{{ alloy_config_module_path }}"
+              pull_frequency = "{{ alloy_config_pull_frequency }}"
+            }
+
+            modules.pipeline "default" {
+              hostname                 = constants.hostname
+              loki_url                 = sys.env("LOKI_URL")
+              mimir_remote_write_url   = sys.env("MIMIR_REMOTE_WRITE_URL")
+              tempo_otlp_http_endpoint = sys.env("TEMPO_OTLP_HTTP_ENDPOINT")
+              pyroscope_url            = sys.env("PYROSCOPE_URL")
+              ingest_username          = sys.env("INGEST_USERNAME")
+              ingest_password          = sys.env("INGEST_PASSWORD")
+              tls_ca_file              = sys.env("ALLOY_TLS_CA_FILE")
+              tls_cert_file            = sys.env("ALLOY_TLS_CERT_FILE")
+              tls_key_file             = sys.env("ALLOY_TLS_KEY_FILE")
+              monitoring_environment  = sys.env("MONITORING_ENVIRONMENT")
+              monitoring_cluster      = sys.env("MONITORING_CLUSTER")
+            }

@@ -1,0 +1,39 @@
+{{- if .Values.awx.enabled }}
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: alloy-deployer
+  namespace: alloy
+rules:
+  - apiGroups: ["*"]
+    resources: ["*"]
+    verbs: ["*"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: alloy-deployer
+  namespace: alloy
+subjects:
+  - kind: ServiceAccount
+    name: {{ .Values.awx.taskServiceAccount }}
+    namespace: awx
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: alloy-deployer
+---
+apiVersion: awx.ansible.com/v1beta1
+kind: AWX
+metadata:
+  name: {{ .Values.awx.name }}
+spec:
+  service_type: ClusterIP
+  admin_user: admin
+  admin_password_secret: {{ .Values.awx.adminPasswordSecret }}
+  projects_persistence: {{ .Values.awx.projectsPersistence }}
+  projects_storage_size: {{ .Values.awx.projectsStorageSize }}
+  postgres_storage_requirements:
+    requests:
+      storage: {{ .Values.awx.postgresStorageSize }}
+{{- end }}

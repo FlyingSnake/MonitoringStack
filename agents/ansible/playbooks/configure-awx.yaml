@@ -1,0 +1,32 @@
+---
+- name: MonitoringStack AWX 객체 구성
+  hosts: localhost
+  gather_facts: false
+  vars:
+    awx_organization: MonitoringStack
+    awx_project_name: monitoring-stack-agents
+    awx_scm_url: https://github.com/FlyingSnake/MonitoringStack.git
+    awx_scm_branch: dev
+  tasks:
+    - name: 조직 생성
+      awx.awx.organization:
+        controller_host: "{{ controller_host }}"
+        controller_username: "{{ controller_username }}"
+        controller_password: "{{ controller_password }}"
+        validate_certs: "{{ controller_verify_ssl | default(true) }}"
+        name: "{{ awx_organization }}"
+        state: present
+
+    - name: Git 프로젝트 생성
+      awx.awx.project:
+        controller_host: "{{ controller_host }}"
+        controller_username: "{{ controller_username }}"
+        controller_password: "{{ controller_password }}"
+        validate_certs: "{{ controller_verify_ssl | default(true) }}"
+        organization: "{{ awx_organization }}"
+        name: "{{ awx_project_name }}"
+        scm_type: git
+        scm_url: "{{ awx_scm_url }}"
+        scm_branch: "{{ awx_scm_branch }}"
+        scm_update_on_launch: true
+        state: present

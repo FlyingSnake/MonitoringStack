@@ -1,0 +1,177 @@
+{{- range .Values.namespaces }}
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: {{ .name }}
+  labels:
+    app.kubernetes.io/part-of: monitoring-stack
+{{- end }}
+{{- range .Values.admissionWebhooks }}
+{{- if .apiServerCidrs }}
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ .name }}
+  namespace: {{ .namespace }}
+spec:
+  podSelector:
+    matchLabels:
+{{ toYaml .podSelector | nindent 6 }}
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+{{- range .apiServerCidrs }}
+        - ipBlock:
+            cidr: {{ . }}
+{{- end }}
+      ports:
+        - protocol: TCP
+          port: {{ .port }}
+{{- end }}
+{{- end }}
+{{- range .Values.bootstrapServiceAccounts }}
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: {{ .name }}
+  namespace: {{ .namespace }}
+{{- end }}
+{{- if .Values.alloyRbac.enabled }}
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: {{ .Values.alloyRbac.serviceAccountName }}
+  namespace: {{ .Values.alloyRbac.namespace }}
+  labels:
+    app.kubernetes.io/managed-by: monitoring-stack
+    app.kubernetes.io/name: alloy
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: {{ .Values.alloyRbac.clusterRoleName }}
+  labels:
+    app.kubernetes.io/managed-by: monitoring-stack
+    app.kubernetes.io/name: alloy
+rules:
+  - apiGroups: ["", discovery.k8s.io, networking.k8s.io]
+    resources: [endpoints, endpointslices, ingresses, pods, services]
+    verbs: [get, list, watch]
+  - apiGroups: [""]
+    resources: [pods, pods/log, namespaces, events, configmaps, secrets, nodes, nodes/pods, nodes/metrics]
+    verbs: [get, list, watch]
+  - apiGroups: [monitoring.grafana.com]
+    resources: [podlogs]
+    verbs: [get, list, watch]
+  - apiGroups: [monitoring.coreos.com]
+    resources: [prometheusrules, alertmanagerconfigs, podmonitors, servicemonitors, probes, scrapeconfigs]
+    verbs: [get, list, watch]
+  - apiGroups: [apps, extensions]
+    resources: [replicasets]
+    verbs: [get, list, watch]
+  - nonResourceURLs: [/metrics]
+    verbs: [get]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: {{ .Values.alloyRbac.clusterRoleName }}
+  labels:
+    app.kubernetes.io/managed-by: monitoring-stack
+    app.kubernetes.io/name: alloy
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: {{ .Values.alloyRbac.clusterRoleName }}
+subjects:
+  - kind: ServiceAccount
+    name: {{ .Values.alloyRbac.serviceAccountName }}
+    namespace: {{ .Values.alloyRbac.namespace }}
+{{- end }}
+{{- range .Values.protectedNamespaces }}
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny
+  namespace: {{ . }}
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+    - Egress
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-monitoring-stack-and-dns
+  namespace: {{ . }}
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              app.kubernetes.io/part-of: monitoring-stack
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: {{ $.Values.gatewayNamespace }}
+  egress:
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              app.kubernetes.io/part-of: monitoring-stack
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: {{ $.Values.gatewayNamespace }}
+      ports:
+        - { protocol: TCP, port: 443 }
+{{- if $.Values.apiServerCidrs }}
+    - to:
+{{- range $.Values.apiServerCidrs }}
+        - ipBlock:
+            cidr: {{ . }}
+{{- end }}
+      ports:
+        - { protocol: TCP, port: 443 }
+        # Kubernetes Service(443)가 control-plane endpoint(6443)로 DNAT되는
+        # CNI 환경에서도 AWX 등 GitOps 작업 Pod가 API에 접근할 수 있게 한다.
+        - { protocol: TCP, port: 6443 }
+{{- end }}
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+      ports:
+        - { protocol: UDP, port: 53 }
+        - { protocol: TCP, port: 53 }
+{{- end }}
+{{- range .Values.externalEgress }}
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ .name }}
+  namespace: {{ .namespace }}
+spec:
+  podSelector:
+{{ toYaml .podSelector | nindent 4 }}
+  policyTypes: [Egress]
+  egress:
+    - to:
+{{- range .cidrs }}
+        - ipBlock:
+            cidr: {{ . }}
+{{- end }}
+      ports:
+{{ toYaml .ports | nindent 8 }}
+{{- end }}

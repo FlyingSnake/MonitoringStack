@@ -1,0 +1,20 @@
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: {{ .Values.project.name }}
+  namespace: argocd
+spec:
+  description: MonitoringStack platform workloads
+  sourceRepos:
+    {{- range .Values.project.sourceRepos }}
+    - {{ . | quote }}
+    {{- end }}
+  destinations:
+    - namespace: '*'
+      server: {{ .Values.cluster.server | quote }}
+  clusterResourceWhitelist:
+    - group: '*'
+      kind: '*'
+  namespaceResourceWhitelist:
+    - group: '*'
+      kind: '*'

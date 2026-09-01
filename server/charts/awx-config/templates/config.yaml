@@ -1,0 +1,116 @@
+{{- if .Values.awx.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: awx-bootstrap-playbook
+  namespace: awx
+data:
+  bootstrap.yml: |
+    ---
+    - name: Configure MonitoringStack AWX objects
+      hosts: localhost
+      connection: local
+      gather_facts: false
+      collections: [awx.awx]
+      module_defaults:
+        group/awx.awx.controller:
+          controller_host: "{{ .Values.awx.url }}"
+          controller_username: admin
+          controller_password: "{{ "{{ lookup('env', 'CONTROLLER_PASSWORD') }}" }}"
+          validate_certs: false
+      tasks:
+        - awx.awx.organization:
+            name: MonitoringStack
+            state: present
+        - awx.awx.execution_environment:
+            name: MonitoringStack AWX EE
+            image: {{ .Values.awx.image | quote }}
+            pull: missing
+            state: present
+          register: monitoring_awx_execution_environment
+        - awx.awx.settings:
+            name: DEFAULT_EXECUTION_ENVIRONMENT
+            value: "{{ "{{ monitoring_awx_execution_environment.id }}" }}"
+        - name: AWX 동적 실행 Pod의 ServiceAccount 고정
+          awx.awx.instance_group:
+            name: default
+            is_container_group: true
+            pod_spec_override: |
+{{ toYaml .Values.awx.executionPodSpec | nindent 14 }}
+        - awx.awx.project:
+            name: MonitoringStack Agents
+            organization: MonitoringStack
+            scm_type: git
+            scm_url: {{ .Values.awx.repository | quote }}
+            scm_branch: {{ .Values.awx.revision | quote }}
+            scm_update_on_launch: true
+            update_project: true
+            state: present
+        - awx.awx.inventory:
+            name: MonitoringStack Git Inventory
+            organization: MonitoringStack
+            state: present
+        - awx.awx.inventory_source:
+            name: MonitoringStack Dev Kubernetes Inventory
+            inventory: MonitoringStack Git Inventory
+            source: scm
+            source_project: MonitoringStack Agents
+            source_path: agents/ansible/inventories/dev/k8s/hosts.yml
+            update_on_launch: true
+            state: present
+        - awx.awx.job_template:
+            name: "Install Alloy - dev Kubernetes"
+            organization: MonitoringStack
+            inventory: MonitoringStack Git Inventory
+            project: MonitoringStack Agents
+            playbook: agents/ansible/playbooks/install-alloy-kubernetes.yaml
+            execution_environment: MonitoringStack AWX EE
+            extra_vars:
+              monitoring_environment: dev
+              vault_addr: {{ .Values.awx.vault.server | quote }}
+              vault_kubernetes_role: {{ .Values.awx.vault.role | quote }}
+              vault_pki_issue_path: {{ .Values.awx.vault.pkiPath | quote }}
+              vault_ingestion_path: {{ .Values.awx.vault.ingestionPath | quote }}
+              alloy_config_repository: {{ .Values.awx.repository | quote }}
+              alloy_config_revision: {{ .Values.awx.revision | quote }}
+              alloy_environment:
+{{ toYaml .Values.awx.alloyEnvironment | nindent 16 }}
+              alloy_host_aliases:
+{{ toYaml .Values.awx.alloyHostAliases | nindent 16 }}
+            state: present
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: awx-config
+  namespace: awx
+  annotations:
+    argocd.argoproj.io/hook: Sync
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation,HookSucceeded
+spec:
+  backoffLimit: 6
+  template:
+    spec:
+      restartPolicy: OnFailure
+      containers:
+        - name: awx-config
+          image: {{ .Values.awx.image | quote }}
+          command: [ansible-playbook, /config/bootstrap.yml]
+          env:
+            - name: HOME
+              value: /tmp
+            - name: ANSIBLE_LOCAL_TEMP
+              value: /tmp/.ansible/tmp
+            - name: CONTROLLER_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.awx.adminSecret }}
+                  key: password
+          volumeMounts:
+            - name: config
+              mountPath: /config
+      volumes:
+        - name: config
+          configMap:
+            name: awx-bootstrap-playbook
+{{- end }}

@@ -1,0 +1,152 @@
+declare "pipeline" {
+  argument "hostname" {}
+  argument "loki_url" {}
+  argument "mimir_remote_write_url" {}
+  argument "tempo_otlp_http_endpoint" {}
+  argument "pyroscope_url" {}
+  argument "ingest_username" {}
+  argument "ingest_password" {}
+  argument "tls_ca_file" {}
+  argument "tls_cert_file" {}
+  argument "tls_key_file" {}
+  argument "monitoring_environment" {}
+  argument "monitoring_cluster" {}
+
+  discovery.kubernetes "pods" {
+    role = "pod"
+  }
+
+  discovery.relabel "pod_logs" {
+    targets = discovery.kubernetes.pods.targets
+    rule {
+      source_labels = ["__meta_kubernetes_namespace"]
+      target_label  = "namespace"
+    }
+    rule {
+      source_labels = ["__meta_kubernetes_pod_name"]
+      target_label  = "pod"
+    }
+  }
+
+  discovery.relabel "pod_metrics" {
+    targets = discovery.kubernetes.pods.targets
+    rule {
+      source_labels = ["__meta_kubernetes_pod_annotation_prometheus_io_scrape"]
+      regex         = "true"
+      action        = "keep"
+    }
+    rule {
+      source_labels = ["__meta_kubernetes_pod_annotation_prometheus_io_path"]
+      regex         = "(.+)"
+      target_label  = "__metrics_path__"
+    }
+    rule {
+      source_labels = ["__address__", "__meta_kubernetes_pod_annotation_prometheus_io_port"]
+      regex         = "([^:]+)(?::\\d+)?;(\\d+)"
+      replacement   = "$1:$2"
+      target_label  = "__address__"
+    }
+  }
+
+  loki.source.kubernetes "pods" {
+    targets    = discovery.relabel.pod_logs.output
+    forward_to = [loki.write.default.receiver]
+  }
+
+  loki.write "default" {
+    endpoint {
+      url = argument.loki_url.value
+      basic_auth {
+        username = argument.ingest_username.value
+        password = argument.ingest_password.value
+      }
+      tls_config {
+        ca_file   = argument.tls_ca_file.value
+        cert_file = argument.tls_cert_file.value
+        key_file  = argument.tls_key_file.value
+      }
+    }
+    external_labels = {
+      environment = argument.monitoring_environment.value,
+      cluster     = argument.monitoring_cluster.value,
+      source      = "kubernetes",
+    }
+  }
+
+  prometheus.remote_write "default" {
+    endpoint {
+      url = argument.mimir_remote_write_url.value
+      basic_auth {
+        username = argument.ingest_username.value
+        password = argument.ingest_password.value
+      }
+      tls_config {
+        ca_file   = argument.tls_ca_file.value
+        cert_file = argument.tls_cert_file.value
+        key_file  = argument.tls_key_file.value
+      }
+    }
+    external_labels = {
+      environment = argument.monitoring_environment.value,
+      cluster     = argument.monitoring_cluster.value,
+    }
+  }
+
+  prometheus.scrape "pods" {
+    targets    = discovery.relabel.pod_metrics.output
+    forward_to = [prometheus.remote_write.default.receiver]
+  }
+
+  otelcol.receiver.otlp "default" {
+    grpc {}
+    http {}
+    output {
+      traces = [otelcol.exporter.otlphttp.tempo.input]
+    }
+  }
+
+  otelcol.auth.basic "ingest" {
+    username = argument.ingest_username.value
+    password = argument.ingest_password.value
+  }
+
+  otelcol.exporter.otlphttp "tempo" {
+    client {
+      endpoint = argument.tempo_otlp_http_endpoint.value
+      auth     = otelcol.auth.basic.ingest.handler
+      tls {
+        ca_file   = argument.tls_ca_file.value
+        cert_file = argument.tls_cert_file.value
+        key_file  = argument.tls_key_file.value
+      }
+    }
+  }
+
+  pyroscope.receive_http "default" {
+    http {
+      listen_address = "0.0.0.0"
+      listen_port    = 9999
+    }
+    forward_to = [pyroscope.write.default.receiver]
+  }
+
+  pyroscope.write "default" {
+    endpoint {
+      url = argument.pyroscope_url.value
+      basic_auth {
+        username = argument.ingest_username.value
+        password = argument.ingest_password.value
+      }
+      tls_config {
+        ca_file   = argument.tls_ca_file.value
+        cert_file = argument.tls_cert_file.value
+        key_file  = argument.tls_key_file.value
+      }
+    }
+    external_labels = {
+      environment = argument.monitoring_environment.value,
+      cluster     = argument.monitoring_cluster.value,
+      source      = "kubernetes",
+    }
+  }
+}

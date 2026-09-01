@@ -1,0 +1,413 @@
+repository:
+  url: https://github.com/FlyingSnake/MonitoringStack.git
+gitRevision: dev
+cluster:
+  server: https://kubernetes.default.svc
+project:
+  name: monitoring-platform
+  sourceRepos:
+    - https://github.com/FlyingSnake/MonitoringStack.git
+    - https://argoproj.github.io/argo-helm
+    - https://helm.releases.hashicorp.com
+    - https://charts.jetstack.io
+    - https://charts.external-secrets.io
+    - https://charts.bitnami.com/bitnami
+    - https://grafana-community.github.io/helm-charts
+    - https://grafana.github.io/helm-charts
+    - https://prometheus-community.github.io/helm-charts
+    - https://charts.redpanda.com
+    - https://ansible-community.github.io/awx-operator-helm
+
+applications:
+  vault:
+    enabled: true
+    namespace: vault
+    syncWave: "00"
+    source: { type: helm, repoURL: "https://helm.releases.hashicorp.com", chart: vault, targetRevision: 0.34.1 }
+    values:
+      global: { enabled: true }
+      injector: { enabled: false }
+      ui: { enabled: true, serviceType: ClusterIP }
+      server:
+        standalone:
+          enabled: true
+          config: |
+            ui = true
+            listener "tcp" { tls_disable = 1 address = "[::]:8200" cluster_address = "[::]:8201" }
+            storage "raft" { path = "/vault/data" }
+        dataStorage: { enabled: true, size: 10Gi }
+        auditStorage: { enabled: true, size: 10Gi }
+
+  cert-manager:
+    enabled: true
+    namespace: cert-manager
+    syncWave: "01"
+    source: { type: helm, repoURL: "https://charts.jetstack.io", chart: cert-manager, targetRevision: v1.21.1 }
+    values: { crds: { enabled: true }, prometheus: { enabled: false } }
+
+  external-secrets:
+    enabled: true
+    namespace: external-secrets
+    syncWave: "01"
+    # CRDs are installed once by bootstrap/install-external-secrets-crds.sh with
+    # server-side apply; Argo CD's Helm CRD path uses client-side annotations.
+    source: { type: helm, repoURL: "https://charts.external-secrets.io", chart: external-secrets, targetRevision: 2.10.0, skipCrds: true }
+    values: { installCRDs: false, serviceMonitor: { enabled: false } }
+
+  platform-foundation:
+    enabled: true
+    namespace: argocd
+    # Namespace manifests must exist before independently synced Helm
+    # Applications can create namespaced objects.
+    syncWave: "-01"
+    source: { type: git, path: server/charts/platform-foundation }
+    values:
+      namespaces:
+        - { name: vault }
+        - { name: cert-manager }
+        - { name: external-secrets }
+        - { name: keycloak }
+        - { name: minio }
+        - { name: redpanda }
+        - { name: loki }
+        - { name: monitoring-stack-server }
+        - { name: pyroscope }
+        - { name: grafana }
+        - { name: blackbox }
+        - { name: awx }
+        - { name: observability }
+        - { name: alloy }
+      bootstrapServiceAccounts:
+        - { name: external-secrets-vault, namespace: external-secrets }
+      protectedNamespaces: [keycloak, minio, redpanda, loki, monitoring-stack-server, pyroscope, grafana, blackbox, awx, observability, alloy]
+      gatewayNamespace: gateway-system
+      alloyRbac: { enabled: true, namespace: alloy, serviceAccountName: alloy, clusterRoleName: alloy }
+      externalEgress:
+        - name: awx-scm-https
+          namespace: awx
+          podSelector: { matchLabels: { app.kubernetes.io/name: monitoring-awx-task } }
+          cidrs: [0.0.0.0/0]
+          ports: [{ protocol: TCP, port: 443 }]
+        - name: awx-execution-helm-https
+          namespace: awx
+          podSelector:
+            matchExpressions:
+              - key: ansible-awx
+                operator: Exists
+          cidrs: [0.0.0.0/0]
+          ports: [{ protocol: TCP, port: 443 }]
+
+  platform-secrets:
+    enabled: true
+    namespace: external-secrets
+    syncWave: "03"
+    source: { type: git, path: server/charts/platform-secrets }
+    values:
+      vault:
+        enabled: true
+        storeName: vault-backend
+        server: http://vault.vault.svc.cluster.local:8200
+        kvMount: monitoring
+        kubernetesAuthMount: kubernetes
+        role: monitoring-stack
+      gatewaySecretNamespace: gateway-system
+      externalSecrets:
+        - { name: keycloak-admin, namespace: keycloak, targetSecret: keycloak-admin, keys: [{ secretKey: admin-password, remoteKey: keycloak, property: admin-password }] }
+        - { name: keycloak-postgresql, namespace: keycloak, targetSecret: keycloak-postgresql, keys: [{ secretKey: password, remoteKey: keycloak-postgresql, property: password }] }
+        - { name: oidc-client-secrets, namespace: keycloak, targetSecret: oidc-client-secrets, keys: [{ secretKey: argocd-client-secret, remoteKey: oidc, property: argocd-client-secret }, { secretKey: grafana-client-secret, remoteKey: oidc, property: grafana-client-secret }, { secretKey: awx-client-secret, remoteKey: oidc, property: awx-client-secret }] }
+        - { name: argocd-oidc, namespace: argocd, targetSecret: argocd-secret, creationPolicy: Merge, keys: [{ secretKey: oidc.keycloak.clientSecret, remoteKey: oidc, property: argocd-client-secret }] }
+        - { name: oidc-client-secrets, namespace: grafana, targetSecret: oidc-client-secrets, keys: [{ secretKey: grafana-client-secret, remoteKey: oidc, property: grafana-client-secret }] }
+        - { name: minio-root, namespace: minio, targetSecret: minio-root, keys: [{ secretKey: root-user, remoteKey: minio, property: root-user }, { secretKey: root-password, remoteKey: minio, property: root-password }] }
+        - { name: object-storage-credentials, namespace: loki, targetSecret: object-storage-credentials, keys: [{ secretKey: AWS_ACCESS_KEY_ID, remoteKey: object-storage, property: access-key-id }, { secretKey: AWS_SECRET_ACCESS_KEY, remoteKey: object-storage, property: secret-access-key }] }
+        - { name: object-storage-credentials, namespace: monitoring-stack-server, targetSecret: object-storage-credentials, keys: [{ secretKey: AWS_ACCESS_KEY_ID, remoteKey: object-storage, property: access-key-id }, { secretKey: AWS_SECRET_ACCESS_KEY, remoteKey: object-storage, property: secret-access-key }] }
+        - { name: object-storage-credentials, namespace: pyroscope, targetSecret: object-storage-credentials, keys: [{ secretKey: AWS_ACCESS_KEY_ID, remoteKey: object-storage, property: access-key-id }, { secretKey: AWS_SECRET_ACCESS_KEY, remoteKey: object-storage, property: secret-access-key }] }
+        - { name: awx-admin, namespace: awx, targetSecret: awx-admin, keys: [{ secretKey: password, remoteKey: awx, property: admin-password }] }
+        - { name: oidc-client-secrets, namespace: awx, targetSecret: oidc-client-secrets, keys: [{ secretKey: awx-client-secret, remoteKey: oidc, property: awx-client-secret }] }
+        - { name: monitoring-ingest-ca, gatewaySecret: true, targetSecret: monitoring-ingest-ca, keys: [{ secretKey: ca.crt, remoteKey: pki, property: ingest-ca-crt }] }
+        - { name: ingestion-basic-auth, namespace: loki, targetSecret: ingestion-basic-auth, keys: [{ secretKey: .htpasswd, remoteKey: ingestion, property: htpasswd }] }
+        - { name: ingestion-basic-auth, namespace: monitoring-stack-server, targetSecret: ingestion-basic-auth, keys: [{ secretKey: .htpasswd, remoteKey: ingestion, property: htpasswd }] }
+        - { name: ingestion-basic-auth, namespace: pyroscope, targetSecret: ingestion-basic-auth, keys: [{ secretKey: .htpasswd, remoteKey: ingestion, property: htpasswd }] }
+
+  keycloak:
+    enabled: true
+    namespace: keycloak
+    syncWave: "10"
+    source: { type: helm, repoURL: "https://charts.bitnami.com/bitnami", chart: keycloak, targetRevision: 25.2.0 }
+    values:
+      image: { repository: bitnamilegacy/keycloak }
+      auth: { adminUser: admin, existingSecret: keycloak-admin, passwordSecretKey: admin-password }
+      postgresql:
+        enabled: true
+        image: { repository: bitnamilegacy/postgresql }
+        auth: { username: keycloak, database: keycloak, existingSecret: keycloak-postgresql, secretKeys: { userPasswordKey: password } }
+        primary: { persistence: { enabled: true, size: 8Gi } }
+      service: { type: ClusterIP }
+
+  platform-identity:
+    enabled: true
+    namespace: keycloak
+    syncWave: "11"
+    source: { type: git, path: server/charts/platform-identity }
+    values:
+      keycloak:
+        realm: monitoring
+        internalUrl: http://keycloak.keycloak.svc.cluster.local
+        adminSecret: keycloak-admin
+        oidcSecret: oidc-client-secrets
+        image: adorsys/keycloak-config-cli:latest-26.3.3
+        hosts: { argocd: "https://argocd.dev.example.internal", grafana: "https://grafana.dev.example.internal", awx: "https://awx.dev.example.internal" }
+
+  minio:
+    enabled: true
+    namespace: minio
+    syncWave: "20"
+    source: { type: helm, repoURL: "https://charts.bitnami.com/bitnami", chart: minio, targetRevision: 17.0.21 }
+    values:
+      image: { repository: bitnamilegacy/minio }
+      console: { image: { repository: bitnamilegacy/minio-object-browser } }
+      mode: standalone
+      auth: { existingSecret: minio-root, rootUserSecretKey: root-user, rootPasswordSecretKey: root-password }
+      defaultBuckets: loki,tempo,mimir-blocks,mimir-ruler,mimir-alertmanager,pyroscope
+      persistence: { enabled: true, size: 50Gi }
+
+  redpanda:
+    enabled: true
+    namespace: redpanda
+    syncWave: "20"
+    source: { type: helm, repoURL: "https://charts.redpanda.com", chart: redpanda, targetRevision: 26.2.2 }
+    values:
+      statefulset: { replicas: 1 }
+      storage: { persistentVolume: { enabled: true, size: 20Gi } }
+      external: { enabled: false }
+      # Redpanda는 dev/stg 내부 NetworkPolicy 경계에서만 사용한다. Mimir와 Tempo의
+      # Kafka 클라이언트는 이 내부 평문 리스너를 사용하며, prd는 외부 TLS Kafka를 참조한다.
+      tls: { enabled: false }
+      # Tempo는 Kafka topic을 자동 생성하지 않으므로, dev/stg의 전용 Redpanda에서만
+      # 토픽 자동 생성을 허용한다. prd는 외부 Kafka의 사전 생성 토픽을 사용한다.
+      config: { cluster: { auto_create_topics_enabled: true } }
+
+  grafana-operator:
+    enabled: true
+    namespace: grafana
+    syncWave: "30"
+    source: { type: helm, repoURL: "https://grafana.github.io/helm-charts", chart: grafana-operator, targetRevision: 5.25.0 }
+    values: { crds: { immutable: false }, serviceMonitor: { enabled: false } }
+
+  platform-observability:
+    enabled: true
+    namespace: grafana
+    syncWave: "31"
+    source: { type: git, path: server/charts/platform-observability }
+    values:
+      grafana:
+        enabled: true
+        rootUrl: https://grafana.dev.example.internal
+        replicas: 1
+        oidcSecret: oidc-client-secrets
+        keycloakUrl: https://keycloak.dev.example.internal
+        realm: monitoring
+        datasources:
+          - { name: loki, uid: loki, displayName: Loki, type: loki, url: "http://loki-gateway.loki.svc.cluster.local", isDefault: false }
+          - { name: mimir, uid: mimir, displayName: Mimir, type: prometheus, url: "http://mimir-nginx.monitoring-stack-server.svc.cluster.local/prometheus", isDefault: true }
+          - { name: tempo, uid: tempo, displayName: Tempo, type: tempo, url: "http://tempo-query-frontend.monitoring-stack-server.svc.cluster.local:3100", isDefault: false, jsonData: { tracesToLogsV2: { datasourceUid: loki }, tracesToProfiles: { datasourceUid: pyroscope } } }
+          - { name: pyroscope, uid: pyroscope, displayName: Pyroscope, type: grafana-pyroscope-datasource, url: "http://pyroscope.pyroscope.svc.cluster.local:4040", isDefault: false }
+
+  loki:
+    enabled: true
+    namespace: loki
+    syncWave: "32"
+    source: { type: helm, repoURL: "https://grafana-community.github.io/helm-charts", chart: loki, targetRevision: 18.11.7 }
+    values:
+      deploymentMode: Distributed
+      global:
+        extraEnvFrom: [{ secretRef: { name: object-storage-credentials } }]
+      defaults:
+        extraArgs: ["-config.expand-env=true"]
+      loki:
+        auth_enabled: false
+        commonConfig: { replication_factor: 1 }
+        schemaConfig: { configs: [{ from: "2024-04-01", store: tsdb, object_store: s3, schema: v13, index: { prefix: loki_index_, period: 24h } }] }
+        storage: { type: s3, bucketNames: { chunks: loki, ruler: loki, admin: loki }, s3: { endpoint: "minio.minio.svc.cluster.local:9000", insecure: true, accessKeyId: "${AWS_ACCESS_KEY_ID}", secretAccessKey: "${AWS_SECRET_ACCESS_KEY}" } }
+      minio: { enabled: false }
+      gateway: { enabled: true }
+      singleBinary: { replicas: 0 }
+      read: { replicas: 0 }
+      write: { replicas: 0 }
+      backend: { replicas: 0 }
+      ingester: { replicas: 1, zoneAwareReplication: { enabled: false } }
+      distributor: { replicas: 1 }
+      querier: { replicas: 1 }
+      queryFrontend: { replicas: 1 }
+      compactor: { replicas: 1 }
+
+  mimir:
+    enabled: true
+    namespace: monitoring-stack-server
+    syncWave: "32"
+    source: { type: helm, repoURL: "https://grafana.github.io/helm-charts", chart: mimir-distributed, targetRevision: 6.2.0 }
+    values:
+      minio: { enabled: false }
+      kafka: { enabled: false }
+      global:
+        extraEnvFrom: [{ secretRef: { name: object-storage-credentials } }]
+      mimir:
+        structuredConfig:
+          multitenancy_enabled: false
+          common: { storage: { backend: s3, s3: { endpoint: "minio.minio.svc.cluster.local:9000", insecure: true, access_key_id: "${AWS_ACCESS_KEY_ID}", secret_access_key: "${AWS_SECRET_ACCESS_KEY}" } } }
+          blocks_storage: { s3: { bucket_name: mimir-blocks, access_key_id: "${AWS_ACCESS_KEY_ID}", secret_access_key: "${AWS_SECRET_ACCESS_KEY}" } }
+          ruler_storage: { s3: { bucket_name: mimir-ruler, access_key_id: "${AWS_ACCESS_KEY_ID}", secret_access_key: "${AWS_SECRET_ACCESS_KEY}" } }
+          alertmanager_storage: { s3: { bucket_name: mimir-alertmanager, access_key_id: "${AWS_ACCESS_KEY_ID}", secret_access_key: "${AWS_SECRET_ACCESS_KEY}" } }
+          ingest_storage: { enabled: true, kafka: { address: "redpanda.redpanda.svc.cluster.local:9093", topic: mimir-ingest, auto_create_topic_enabled: true, auto_create_topic_default_partitions: 3 } }
+          ingester: { push_grpc_method_enabled: false }
+      ingester: { replicas: 1 }
+      store_gateway: { replicas: 1 }
+      distributor: { replicas: 1 }
+      querier: { replicas: 1 }
+
+  tempo:
+    enabled: true
+    namespace: monitoring-stack-server
+    syncWave: "32"
+    source: { type: helm, repoURL: "https://grafana.github.io/helm-charts", chart: tempo-distributed, targetRevision: 1.61.3 }
+    values:
+      global:
+        extraEnvFrom: [{ secretRef: { name: object-storage-credentials } }]
+      tempo:
+        multitenancyEnabled: false
+        storage: { trace: { backend: s3, s3: { endpoint: "minio.minio.svc.cluster.local:9000", insecure: true, bucket: tempo, access_key: "${AWS_ACCESS_KEY_ID}", secret_key: "${AWS_SECRET_ACCESS_KEY}" } } }
+      traces:
+        otlp: { grpc: { enabled: true }, http: { enabled: true } }
+        kafka: { brokers: ["redpanda.redpanda.svc.cluster.local:9093"], topic: tempo }
+      # 환경 변수로 주입한 객체 저장소 자격증명은 Tempo 프로세스만 확장한다.
+      # global.extraArgs는 memcached에도 전달되어 기동 인자를 손상시키므로 사용하지 않는다.
+      distributor: { replicas: 1, extraArgs: ["-config.expand-env=true"] }
+      ingester: { replicas: 1, extraArgs: ["-config.expand-env=true"] }
+      querier: { replicas: 1, extraArgs: ["-config.expand-env=true"] }
+      queryFrontend: { replicas: 1, extraArgs: ["-config.expand-env=true"] }
+      compactor: { replicas: 1, extraArgs: ["-config.expand-env=true"] }
+
+  pyroscope:
+    enabled: true
+    namespace: pyroscope
+    syncWave: "32"
+    source: { type: helm, repoURL: "https://grafana.github.io/helm-charts", chart: pyroscope, targetRevision: 2.2.1 }
+    values:
+      global:
+        extraEnvFrom: [{ secretRef: { name: object-storage-credentials } }]
+      pyroscope:
+        config: |
+          storage:
+            backend: s3
+            s3:
+              endpoint: minio.minio.svc.cluster.local:9000
+              bucket_name: pyroscope
+              access_key_id: ${AWS_ACCESS_KEY_ID}
+              secret_access_key: ${AWS_SECRET_ACCESS_KEY}
+              insecure: true
+      minio: { enabled: false }
+
+  blackbox-exporter:
+    enabled: true
+    namespace: blackbox
+    syncWave: "32"
+    source: { type: helm, repoURL: "https://prometheus-community.github.io/helm-charts", chart: prometheus-blackbox-exporter, targetRevision: 11.17.2 }
+    values:
+      config:
+        modules:
+          http_2xx: { prober: http, timeout: 5s, http: { valid_http_versions: [HTTP/1.1, HTTP/2.0] } }
+          tcp_connect: { prober: tcp, timeout: 5s }
+          icmp: { prober: icmp, timeout: 5s }
+          dns_udp: { prober: dns, timeout: 5s, dns: { query_name: example.com, query_type: A } }
+
+  server-alloy:
+    enabled: true
+    namespace: observability
+    syncWave: "32"
+    source: { type: helm, repoURL: "https://grafana.github.io/helm-charts", chart: alloy, targetRevision: 1.12.1 }
+    values:
+      controller: { type: deployment, replicas: 1 }
+      alloy:
+        configMap:
+          create: true
+          content: |
+            prometheus.scrape "blackbox" {
+              targets = [{ "__address__" = "blackbox-prometheus-blackbox-exporter.blackbox.svc.cluster.local:9115" }]
+              forward_to = [prometheus.remote_write.mimir.receiver]
+            }
+            prometheus.remote_write "mimir" {
+              endpoint { url = "http://mimir-nginx.monitoring-stack-server.svc.cluster.local/api/v1/push" }
+            }
+
+  platform-gateway:
+    enabled: true
+    namespace: gateway-system
+    syncWave: "33"
+    source: { type: git, path: server/charts/platform-gateway }
+    values:
+      gateway:
+        enabled: true
+        name: platform-gateway
+        namespace: gateway-system
+        uiListener: ui-https
+        ingestListener: ingest-https
+        issuer: { name: vault-pki, kind: Issuer }
+        vault: { server: "http://vault.vault.svc.cluster.local:8200", signPath: pki_int/sign/monitoring-server, kubernetesAuthMount: /v1/auth/kubernetes, issuerRole: cert-manager-issuer }
+        tls:
+          uiSecretName: monitoring-ui-tls
+          ingestSecretName: monitoring-ingest-tls
+          uiDnsNames: [grafana.dev.example.internal, argocd.dev.example.internal, keycloak.dev.example.internal, awx.dev.example.internal]
+          ingestDnsNames: [loki.ingest.dev.example.internal, mimir.ingest.dev.example.internal, tempo.ingest.dev.example.internal, pyroscope.ingest.dev.example.internal]
+        mtlsCaSecret: monitoring-ingest-ca
+        uiRoutes:
+          - { name: grafana, namespace: grafana, hostname: grafana.dev.example.internal, service: grafana-service, port: 3000 }
+          - { name: keycloak, namespace: keycloak, hostname: keycloak.dev.example.internal, service: keycloak, port: 80 }
+          - { name: argocd, namespace: argocd, hostname: argocd.dev.example.internal, service: argocd-server, port: 80 }
+          - { name: awx, namespace: awx, hostname: awx.dev.example.internal, service: monitoring-awx-service, port: 80 }
+        ingestionRoutes:
+          - { name: loki-ingest, namespace: loki, hostname: loki.ingest.dev.example.internal, service: loki-gateway, port: 80, basicAuthSecret: ingestion-basic-auth }
+          - { name: mimir-ingest, namespace: monitoring-stack-server, hostname: mimir.ingest.dev.example.internal, service: mimir-nginx, port: 80, basicAuthSecret: ingestion-basic-auth }
+          - { name: tempo-ingest, namespace: monitoring-stack-server, hostname: tempo.ingest.dev.example.internal, service: tempo-distributor, port: 4318, basicAuthSecret: ingestion-basic-auth }
+          - { name: pyroscope-ingest, namespace: pyroscope, hostname: pyroscope.ingest.dev.example.internal, service: pyroscope, port: 4040, basicAuthSecret: ingestion-basic-auth }
+
+  awx-operator:
+    enabled: true
+    namespace: awx
+    syncWave: "40"
+    source: { type: helm, repoURL: "https://ansible-community.github.io/awx-operator-helm", chart: awx-operator, targetRevision: 3.2.1 }
+    values: { }
+
+  awx-resources:
+    enabled: true
+    namespace: awx
+    syncWave: "41"
+    source: { type: git, path: server/charts/awx-resources }
+    values:
+      awx: { enabled: true, name: monitoring-awx, adminPasswordSecret: awx-admin, taskServiceAccount: monitoring-awx, projectsPersistence: true, projectsStorageSize: 10Gi, postgresStorageSize: 8Gi }
+
+  awx-config:
+    enabled: true
+    namespace: awx
+    syncWave: "42"
+    source: { type: git, path: server/charts/awx-config }
+    values:
+      awx:
+        enabled: true
+        name: monitoring-awx
+        url: "http://monitoring-awx-service.awx.svc.cluster.local"
+        adminSecret: awx-admin
+        oidcSecret: oidc-client-secrets
+        image: "quay.io/ansible/awx-ee:24.6.1"
+        repository: "https://github.com/FlyingSnake/MonitoringStack.git"
+        revision: dev
+        vault: { server: "http://vault.vault.svc.cluster.local:8200", role: awx-agent, pkiPath: pki_int/issue/monitoring-client, ingestionPath: monitoring/data/ingestion }
+        alloyEnvironment:
+          LOKI_URL: "https://loki.ingest.dev.example.internal/loki/api/v1/push"
+          MIMIR_REMOTE_WRITE_URL: "https://mimir.ingest.dev.example.internal/api/v1/push"
+          MONITORING_CLUSTER: dev
+          MONITORING_ENVIRONMENT: dev
+          PYROSCOPE_URL: "https://pyroscope.ingest.dev.example.internal"
+          TEMPO_OTLP_HTTP_ENDPOINT: "https://tempo.ingest.dev.example.internal"
+          ALLOY_TLS_CA_FILE: /etc/alloy/credentials/ca.crt
+          ALLOY_TLS_CERT_FILE: /etc/alloy/credentials/tls.crt
+          ALLOY_TLS_KEY_FILE: /etc/alloy/credentials/tls.key
+        alloyHostAliases: []

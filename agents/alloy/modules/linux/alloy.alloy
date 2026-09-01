@@ -1,0 +1,112 @@
+declare "pipeline" {
+  argument "hostname" {}
+  argument "loki_url" {}
+  argument "mimir_remote_write_url" {}
+  argument "tempo_otlp_http_endpoint" {}
+  argument "pyroscope_url" {}
+  argument "ingest_username" {}
+  argument "ingest_password" {}
+  argument "tls_ca_file" {}
+  argument "tls_cert_file" {}
+  argument "tls_key_file" {}
+  argument "monitoring_environment" {}
+
+  loki.write "default" {
+    endpoint {
+      url = argument.loki_url.value
+      basic_auth {
+        username = argument.ingest_username.value
+        password = argument.ingest_password.value
+      }
+      tls_config {
+        ca_file   = argument.tls_ca_file.value
+        cert_file = argument.tls_cert_file.value
+        key_file  = argument.tls_key_file.value
+      }
+    }
+    external_labels = {
+      environment = argument.monitoring_environment.value,
+      host        = argument.hostname.value,
+      source      = "linux",
+    }
+  }
+
+  loki.source.journal "default" {
+    forward_to = [loki.write.default.receiver]
+    labels = {
+      job = "journal",
+    }
+  }
+
+  prometheus.exporter.unix "host" {}
+
+  prometheus.scrape "host" {
+    targets    = prometheus.exporter.unix.host.targets
+    forward_to = [prometheus.remote_write.default.receiver]
+  }
+
+  prometheus.remote_write "default" {
+    endpoint {
+      url = argument.mimir_remote_write_url.value
+      basic_auth {
+        username = argument.ingest_username.value
+        password = argument.ingest_password.value
+      }
+      tls_config {
+        ca_file   = argument.tls_ca_file.value
+        cert_file = argument.tls_cert_file.value
+        key_file  = argument.tls_key_file.value
+      }
+    }
+    external_labels = {
+      environment = argument.monitoring_environment.value,
+      instance    = argument.hostname.value,
+      source      = "linux",
+    }
+  }
+
+  otelcol.receiver.otlp "default" {
+    grpc {}
+    http {}
+    output {
+      traces = [otelcol.exporter.otlphttp.tempo.input]
+    }
+  }
+
+  otelcol.auth.basic "ingest" {
+    username = argument.ingest_username.value
+    password = argument.ingest_password.value
+  }
+
+  otelcol.exporter.otlphttp "tempo" {
+    client {
+      endpoint = argument.tempo_otlp_http_endpoint.value
+      auth     = otelcol.auth.basic.ingest.handler
+      tls {
+        ca_file   = argument.tls_ca_file.value
+        cert_file = argument.tls_cert_file.value
+        key_file  = argument.tls_key_file.value
+      }
+    }
+  }
+
+  pyroscope.write "default" {
+    endpoint {
+      url = argument.pyroscope_url.value
+      basic_auth {
+        username = argument.ingest_username.value
+        password = argument.ingest_password.value
+      }
+      tls_config {
+        ca_file   = argument.tls_ca_file.value
+        cert_file = argument.tls_cert_file.value
+        key_file  = argument.tls_key_file.value
+      }
+    }
+    external_labels = {
+      environment = argument.monitoring_environment.value,
+      host        = argument.hostname.value,
+      source      = "linux",
+    }
+  }
+}

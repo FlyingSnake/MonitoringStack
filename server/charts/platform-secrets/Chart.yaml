@@ -1,0 +1,5 @@
+apiVersion: v2
+name: monitoring-platform-secrets
+description: Vault-backed External Secrets contracts for MonitoringStack
+type: application
+version: 0.1.0

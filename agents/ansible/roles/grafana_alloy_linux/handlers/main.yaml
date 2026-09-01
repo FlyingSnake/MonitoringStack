@@ -1,0 +1,10 @@
+---
+- name: systemd daemon-reload
+  ansible.builtin.systemd_service:
+    daemon_reload: true
+
+- name: Alloy 재시작
+  ansible.builtin.systemd_service:
+    name: alloy
+    enabled: true
+    state: restarted
