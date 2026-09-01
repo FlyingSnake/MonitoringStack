@@ -15,6 +15,11 @@
     # namespace 한정 ServiceAccount가 cluster-wide CRD 권한을 갖지 않게 한다.
     skip_crds: true
     values:
+      rbac:
+        create: false
+      serviceAccount:
+        create: false
+        name: "{{ alloy_service_account_name }}"
       controller:
         type: daemonset
         volumes:

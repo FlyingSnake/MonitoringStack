@@ -5,3 +5,8 @@ gatewayNamespace: gateway-system
 admissionWebhooks: []
 apiServerCidrs: []
 externalEgress: []
+alloyRbac:
+  enabled: false
+  namespace: alloy
+  serviceAccountName: alloy
+  clusterRoleName: alloy

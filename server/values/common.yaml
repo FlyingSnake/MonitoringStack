@@ -81,6 +81,7 @@ applications:
         - { name: external-secrets-vault, namespace: external-secrets }
       protectedNamespaces: [keycloak, minio, redpanda, loki, monitoring-stack-server, pyroscope, grafana, blackbox, awx, observability, alloy]
       gatewayNamespace: gateway-system
+      alloyRbac: { enabled: true, namespace: alloy, serviceAccountName: alloy, clusterRoleName: alloy }
       externalEgress:
         - name: awx-scm-https
           namespace: awx

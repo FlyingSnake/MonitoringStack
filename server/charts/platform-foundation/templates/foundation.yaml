@@ -40,6 +40,59 @@ metadata:
   name: {{ .name }}
   namespace: {{ .namespace }}
 {{- end }}
+{{- if .Values.alloyRbac.enabled }}
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: {{ .Values.alloyRbac.serviceAccountName }}
+  namespace: {{ .Values.alloyRbac.namespace }}
+  labels:
+    app.kubernetes.io/managed-by: monitoring-stack
+    app.kubernetes.io/name: alloy
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: {{ .Values.alloyRbac.clusterRoleName }}
+  labels:
+    app.kubernetes.io/managed-by: monitoring-stack
+    app.kubernetes.io/name: alloy
+rules:
+  - apiGroups: ["", discovery.k8s.io, networking.k8s.io]
+    resources: [endpoints, endpointslices, ingresses, pods, services]
+    verbs: [get, list, watch]
+  - apiGroups: [""]
+    resources: [pods, pods/log, namespaces, events, configmaps, secrets, nodes, nodes/pods, nodes/metrics]
+    verbs: [get, list, watch]
+  - apiGroups: [monitoring.grafana.com]
+    resources: [podlogs]
+    verbs: [get, list, watch]
+  - apiGroups: [monitoring.coreos.com]
+    resources: [prometheusrules, alertmanagerconfigs, podmonitors, servicemonitors, probes, scrapeconfigs]
+    verbs: [get, list, watch]
+  - apiGroups: [apps, extensions]
+    resources: [replicasets]
+    verbs: [get, list, watch]
+  - nonResourceURLs: [/metrics]
+    verbs: [get]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: {{ .Values.alloyRbac.clusterRoleName }}
+  labels:
+    app.kubernetes.io/managed-by: monitoring-stack
+    app.kubernetes.io/name: alloy
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: {{ .Values.alloyRbac.clusterRoleName }}
+subjects:
+  - kind: ServiceAccount
+    name: {{ .Values.alloyRbac.serviceAccountName }}
+    namespace: {{ .Values.alloyRbac.namespace }}
+{{- end }}
 {{- range .Values.protectedNamespaces }}
 ---
 apiVersion: networking.k8s.io/v1
