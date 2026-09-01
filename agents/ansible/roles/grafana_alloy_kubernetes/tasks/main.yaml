@@ -11,6 +11,9 @@
     chart_version: "{{ alloy_chart_version }}"
     release_namespace: "{{ alloy_namespace }}"
     create_namespace: false
+    # PodLogs CRD는 서버 GitOps 영역에서 이미 수명주기를 관리한다. AWX의
+    # namespace 한정 ServiceAccount가 cluster-wide CRD 권한을 갖지 않게 한다.
+    skip_crds: true
     values:
       controller:
         type: daemonset
