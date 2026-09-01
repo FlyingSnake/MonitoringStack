@@ -12,6 +12,12 @@ awx:
     role: awx-agent
     pkiPath: pki_int/issue/monitoring-client
     ingestionPath: monitoring/data/ingestion
+  executionPodSpec:
+    apiVersion: v1
+    kind: Pod
+    spec:
+      serviceAccountName: monitoring-awx
+      automountServiceAccountToken: true
   alloyEnvironment:
     LOKI_URL: https://loki.ingest.dev.example.internal/loki/api/v1/push
     MIMIR_REMOTE_WRITE_URL: https://mimir.ingest.dev.example.internal/api/v1/push

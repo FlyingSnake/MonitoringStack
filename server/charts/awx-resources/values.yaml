@@ -2,7 +2,7 @@ awx:
   enabled: false
   name: monitoring-awx
   adminPasswordSecret: awx-admin
-  taskServiceAccount: awx-vault
+  taskServiceAccount: monitoring-awx
   projectsPersistence: true
   projectsStorageSize: 10Gi
   postgresStorageSize: 8Gi

@@ -31,6 +31,12 @@ data:
         - awx.awx.settings:
             name: DEFAULT_EXECUTION_ENVIRONMENT
             value: "{{ "{{ monitoring_awx_execution_environment.id }}" }}"
+        - name: AWX 동적 실행 Pod의 ServiceAccount 고정
+          awx.awx.instance_group:
+            name: default
+            is_container_group: true
+            pod_spec_override: |
+{{ toYaml .Values.awx.executionPodSpec | nindent 14 }}
         - awx.awx.project:
             name: MonitoringStack Agents
             organization: MonitoringStack
