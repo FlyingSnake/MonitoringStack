@@ -1,5 +1,16 @@
 declare "pipeline" {
   argument "hostname" {}
+  argument "loki_url" {}
+  argument "mimir_remote_write_url" {}
+  argument "tempo_otlp_http_endpoint" {}
+  argument "pyroscope_url" {}
+  argument "ingest_username" {}
+  argument "ingest_password" {}
+  argument "tls_ca_file" {}
+  argument "tls_cert_file" {}
+  argument "tls_key_file" {}
+  argument "monitoring_environment" {}
+  argument "monitoring_cluster" {}
 
   discovery.kubernetes "pods" {
     role = "pod"
@@ -44,40 +55,40 @@ declare "pipeline" {
 
   loki.write "default" {
     endpoint {
-      url = sys.env("LOKI_URL")
+      url = argument.loki_url.value
       basic_auth {
-        username = sys.env("INGEST_USERNAME")
-        password = sys.env("INGEST_PASSWORD")
+        username = argument.ingest_username.value
+        password = argument.ingest_password.value
       }
       tls_config {
-        ca_file   = sys.env("ALLOY_TLS_CA_FILE")
-        cert_file = sys.env("ALLOY_TLS_CERT_FILE")
-        key_file  = sys.env("ALLOY_TLS_KEY_FILE")
+        ca_file   = argument.tls_ca_file.value
+        cert_file = argument.tls_cert_file.value
+        key_file  = argument.tls_key_file.value
       }
     }
     external_labels = {
-      environment = sys.env("MONITORING_ENVIRONMENT"),
-      cluster     = sys.env("MONITORING_CLUSTER"),
+      environment = argument.monitoring_environment.value,
+      cluster     = argument.monitoring_cluster.value,
       source      = "kubernetes",
     }
   }
 
   prometheus.remote_write "default" {
     endpoint {
-      url = sys.env("MIMIR_REMOTE_WRITE_URL")
+      url = argument.mimir_remote_write_url.value
       basic_auth {
-        username = sys.env("INGEST_USERNAME")
-        password = sys.env("INGEST_PASSWORD")
+        username = argument.ingest_username.value
+        password = argument.ingest_password.value
       }
       tls_config {
-        ca_file   = sys.env("ALLOY_TLS_CA_FILE")
-        cert_file = sys.env("ALLOY_TLS_CERT_FILE")
-        key_file  = sys.env("ALLOY_TLS_KEY_FILE")
+        ca_file   = argument.tls_ca_file.value
+        cert_file = argument.tls_cert_file.value
+        key_file  = argument.tls_key_file.value
       }
     }
     external_labels = {
-      environment = sys.env("MONITORING_ENVIRONMENT"),
-      cluster     = sys.env("MONITORING_CLUSTER"),
+      environment = argument.monitoring_environment.value,
+      cluster     = argument.monitoring_cluster.value,
     }
   }
 
@@ -95,18 +106,18 @@ declare "pipeline" {
   }
 
   otelcol.auth.basic "ingest" {
-    username = sys.env("INGEST_USERNAME")
-    password = sys.env("INGEST_PASSWORD")
+    username = argument.ingest_username.value
+    password = argument.ingest_password.value
   }
 
   otelcol.exporter.otlphttp "tempo" {
     client {
-      endpoint = sys.env("TEMPO_OTLP_HTTP_ENDPOINT")
+      endpoint = argument.tempo_otlp_http_endpoint.value
       auth     = otelcol.auth.basic.ingest.handler
       tls {
-        ca_file   = sys.env("ALLOY_TLS_CA_FILE")
-        cert_file = sys.env("ALLOY_TLS_CERT_FILE")
-        key_file  = sys.env("ALLOY_TLS_KEY_FILE")
+        ca_file   = argument.tls_ca_file.value
+        cert_file = argument.tls_cert_file.value
+        key_file  = argument.tls_key_file.value
       }
     }
   }
@@ -121,20 +132,20 @@ declare "pipeline" {
 
   pyroscope.write "default" {
     endpoint {
-      url = sys.env("PYROSCOPE_URL")
+      url = argument.pyroscope_url.value
       basic_auth {
-        username = sys.env("INGEST_USERNAME")
-        password = sys.env("INGEST_PASSWORD")
+        username = argument.ingest_username.value
+        password = argument.ingest_password.value
       }
       tls_config {
-        ca_file   = sys.env("ALLOY_TLS_CA_FILE")
-        cert_file = sys.env("ALLOY_TLS_CERT_FILE")
-        key_file  = sys.env("ALLOY_TLS_KEY_FILE")
+        ca_file   = argument.tls_ca_file.value
+        cert_file = argument.tls_cert_file.value
+        key_file  = argument.tls_key_file.value
       }
     }
     external_labels = {
-      environment = sys.env("MONITORING_ENVIRONMENT"),
-      cluster     = sys.env("MONITORING_CLUSTER"),
+      environment = argument.monitoring_environment.value,
+      cluster     = argument.monitoring_cluster.value,
       source      = "kubernetes",
     }
   }
