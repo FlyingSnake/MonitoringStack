@@ -87,6 +87,14 @@ applications:
           podSelector: { matchLabels: { app.kubernetes.io/name: monitoring-awx-task } }
           cidrs: [0.0.0.0/0]
           ports: [{ protocol: TCP, port: 443 }]
+        - name: awx-execution-helm-https
+          namespace: awx
+          podSelector:
+            matchExpressions:
+              - key: ansible-awx
+                operator: Exists
+          cidrs: [0.0.0.0/0]
+          ports: [{ protocol: TCP, port: 443 }]
 
   platform-secrets:
     enabled: true
