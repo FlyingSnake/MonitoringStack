@@ -31,7 +31,7 @@ declare "pipeline" {
     grpc {}
     http {}
     output {
-      traces = [otelcol.exporter.otlp.tempo.input]
+      traces = [otelcol.exporter.otlphttp.tempo.input]
     }
   }
 
