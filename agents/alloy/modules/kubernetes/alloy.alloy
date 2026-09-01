@@ -95,10 +95,8 @@ declare "pipeline" {
   }
 
   otelcol.auth.basic "ingest" {
-    client_auth {
-      username = sys.env("INGEST_USERNAME")
-      password = sys.env("INGEST_PASSWORD")
-    }
+    username = sys.env("INGEST_USERNAME")
+    password = sys.env("INGEST_PASSWORD")
   }
 
   otelcol.exporter.otlphttp "tempo" {
