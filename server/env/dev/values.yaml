@@ -67,6 +67,6 @@ applications:
           - { name: awx, namespace: awx, hostname: awx.dev.example.internal, service: monitoring-awx-service, port: 80 }
         ingestionRoutes:
           - { name: loki-ingest, namespace: loki, hostname: loki.ingest.dev.example.internal, service: loki-gateway, port: 80, basicAuthSecret: ingestion-basic-auth }
-          - { name: mimir-ingest, namespace: monitoring-stack-server, hostname: mimir.ingest.dev.example.internal, service: mimir-nginx, port: 80, basicAuthSecret: ingestion-basic-auth }
+          - { name: mimir-ingest, namespace: monitoring-stack-server, hostname: mimir.ingest.dev.example.internal, service: mimir-gateway, port: 80, basicAuthSecret: ingestion-basic-auth }
           - { name: tempo-ingest, namespace: monitoring-stack-server, hostname: tempo.ingest.dev.example.internal, service: tempo-distributor, port: 4318, basicAuthSecret: ingestion-basic-auth }
           - { name: pyroscope-ingest, namespace: pyroscope, hostname: pyroscope.ingest.dev.example.internal, service: pyroscope, port: 4040, basicAuthSecret: ingestion-basic-auth }
