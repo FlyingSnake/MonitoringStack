@@ -111,8 +111,11 @@ spec:
             type: PathPrefix
             value: /
       backendRefs:
-        - name: {{ .service }}
+        - group: ""
+          kind: Service
+          name: {{ .service }}
           port: {{ .port }}
+          weight: 1
 {{- end }}
 {{- range .Values.gateway.ingestionRoutes }}
 ---
@@ -133,8 +136,11 @@ spec:
             type: PathPrefix
             value: /
       backendRefs:
-        - name: {{ .service }}
+        - group: ""
+          kind: Service
+          name: {{ .service }}
           port: {{ .port }}
+          weight: 1
 ---
 apiVersion: gateway.envoyproxy.io/v1alpha1
 kind: SecurityPolicy
