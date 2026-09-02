@@ -152,6 +152,11 @@ data:
               ansible_user: {{ .Values.awx.linuxTest.username | quote }}
               ansible_python_interpreter: /usr/bin/python3
             state: present
+        - awx.awx.group:
+            name: alloy_linux
+            inventory: {{ .Values.awx.linuxTest.inventoryName | quote }}
+            hosts: [{{ .Values.awx.linuxTest.hostName | quote }}]
+            state: present
         - awx.awx.credential:
             name: {{ .Values.awx.linuxTest.credentialName | quote }}
             organization: MonitoringStack
