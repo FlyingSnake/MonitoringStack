@@ -154,7 +154,7 @@ applications:
         internalUrl: http://keycloak.keycloak.svc.cluster.local
         adminSecret: keycloak-admin
         oidcSecret: oidc-client-secrets
-        image: adorsys/keycloak-config-cli:latest-26.3.3
+        image: adorsys/keycloak-config-cli:6.5.1-26
         hosts: { argocd: "https://argocd.dev.example.internal", grafana: "https://grafana.dev.example.internal", awx: "https://awx.dev.example.internal" }
 
   minio:
