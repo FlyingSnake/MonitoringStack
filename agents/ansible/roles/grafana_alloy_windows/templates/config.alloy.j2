@@ -12,6 +12,7 @@ import.git "modules" {
 modules.pipeline "default" {
   hostname                 = constants.hostname
   loki_url                 = sys.env("LOKI_URL")
+  mimir_remote_write_url   = sys.env("MIMIR_REMOTE_WRITE_URL")
   tempo_otlp_http_endpoint = sys.env("TEMPO_OTLP_HTTP_ENDPOINT")
   ingest_username          = sys.env("INGEST_USERNAME")
   ingest_password          = sys.env("INGEST_PASSWORD")

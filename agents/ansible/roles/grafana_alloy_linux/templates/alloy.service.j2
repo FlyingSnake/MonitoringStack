@@ -9,6 +9,7 @@ Group=alloy
 {% for key, value in alloy_environment | dictsort %}
 Environment="{{ key }}={{ value }}"
 {% endfor %}
+EnvironmentFile=-{{ alloy_credentials_environment_file }}
 ExecStart=/usr/local/bin/alloy run {{ alloy_config_path }} --storage.path=/var/lib/alloy
 Restart=always
 RestartSec=5

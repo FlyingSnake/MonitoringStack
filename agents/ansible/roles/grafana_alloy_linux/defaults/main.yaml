@@ -1,14 +1,18 @@
 ---
 alloy_version: 1.11.2
-alloy_package_url: "https://github.com/grafana/alloy/releases/download/v{{ alloy_version }}/alloy-linux-amd64.zip"
+alloy_architecture_map:
+  x86_64: amd64
+  aarch64: arm64
+alloy_package_url: ""
 alloy_config_path: /etc/alloy/config.alloy
 alloy_config_repository: https://github.com/FlyingSnake/MonitoringStack.git
 alloy_config_revision: dev
 alloy_config_module_path: agents/alloy/modules/linux/alloy.alloy
 alloy_config_pull_frequency: 5m
-alloy_download_path: /tmp/alloy-linux-amd64.zip
-alloy_extract_path: /tmp/alloy-linux-amd64
+alloy_download_path: /tmp/alloy-linux.zip
+alloy_extract_path: /tmp/alloy-linux
 alloy_credentials_path: /etc/alloy/credentials
+alloy_credentials_environment_file: "{{ alloy_credentials_path }}/environment"
 alloy_environment:
   LOKI_URL: https://loki.ingest.dev.example.internal/loki/api/v1/push
   MIMIR_REMOTE_WRITE_URL: https://mimir.ingest.dev.example.internal/api/v1/push

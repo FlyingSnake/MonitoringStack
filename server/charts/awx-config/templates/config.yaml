@@ -58,6 +58,30 @@ data:
             source_path: agents/ansible/inventories/dev/k8s/hosts.yml
             update_on_launch: true
             state: present
+        - awx.awx.inventory:
+            name: MonitoringStack Dev Linux Inventory
+            organization: MonitoringStack
+            state: present
+        - awx.awx.inventory_source:
+            name: MonitoringStack Dev Linux Inventory Source
+            inventory: MonitoringStack Dev Linux Inventory
+            source: scm
+            source_project: MonitoringStack Agents
+            source_path: agents/ansible/inventories/dev/linux/hosts.yml
+            update_on_launch: true
+            state: present
+        - awx.awx.inventory:
+            name: MonitoringStack Dev Windows Inventory
+            organization: MonitoringStack
+            state: present
+        - awx.awx.inventory_source:
+            name: MonitoringStack Dev Windows Inventory Source
+            inventory: MonitoringStack Dev Windows Inventory
+            source: scm
+            source_project: MonitoringStack Agents
+            source_path: agents/ansible/inventories/dev/windows/hosts.yml
+            update_on_launch: true
+            state: present
         - awx.awx.job_template:
             name: "Install Alloy - dev Kubernetes"
             organization: MonitoringStack
@@ -78,6 +102,85 @@ data:
               alloy_host_aliases:
 {{ toYaml .Values.awx.alloyHostAliases | nindent 16 }}
             state: present
+        - awx.awx.job_template:
+            name: "Install Alloy - dev Linux"
+            organization: MonitoringStack
+            inventory: MonitoringStack Dev Linux Inventory
+            project: MonitoringStack Agents
+            playbook: agents/ansible/playbooks/install-alloy-linux.yaml
+            execution_environment: MonitoringStack AWX EE
+            extra_vars:
+              monitoring_environment: dev
+              vault_addr: {{ .Values.awx.vault.server | quote }}
+              vault_kubernetes_role: {{ .Values.awx.vault.role | quote }}
+              vault_pki_issue_path: {{ .Values.awx.vault.pkiPath | quote }}
+              vault_ingestion_path: {{ .Values.awx.vault.ingestionPath | quote }}
+              alloy_config_repository: {{ .Values.awx.repository | quote }}
+              alloy_config_revision: {{ .Values.awx.revision | quote }}
+              alloy_environment:
+{{ toYaml .Values.awx.alloyEnvironment | nindent 16 }}
+            state: present
+        - awx.awx.job_template:
+            name: "Install Alloy - dev Windows"
+            organization: MonitoringStack
+            inventory: MonitoringStack Dev Windows Inventory
+            project: MonitoringStack Agents
+            playbook: agents/ansible/playbooks/install-alloy-windows.yaml
+            execution_environment: MonitoringStack AWX EE
+            extra_vars:
+              monitoring_environment: dev
+              vault_addr: {{ .Values.awx.vault.server | quote }}
+              vault_kubernetes_role: {{ .Values.awx.vault.role | quote }}
+              vault_pki_issue_path: {{ .Values.awx.vault.pkiPath | quote }}
+              vault_ingestion_path: {{ .Values.awx.vault.ingestionPath | quote }}
+              alloy_config_repository: {{ .Values.awx.repository | quote }}
+              alloy_config_revision: {{ .Values.awx.revision | quote }}
+              alloy_environment:
+{{ toYaml .Values.awx.alloyEnvironment | nindent 16 }}
+            state: present
+{{- if .Values.awx.linuxTest.enabled }}
+        - awx.awx.inventory:
+            name: {{ .Values.awx.linuxTest.inventoryName | quote }}
+            organization: MonitoringStack
+            state: present
+        - awx.awx.host:
+            name: {{ .Values.awx.linuxTest.hostName | quote }}
+            inventory: {{ .Values.awx.linuxTest.inventoryName | quote }}
+            variables:
+              ansible_host: {{ .Values.awx.linuxTest.host | quote }}
+              ansible_port: {{ .Values.awx.linuxTest.port }}
+              ansible_user: {{ .Values.awx.linuxTest.username | quote }}
+              ansible_python_interpreter: /usr/bin/python3
+            state: present
+        - awx.awx.credential:
+            name: {{ .Values.awx.linuxTest.credentialName | quote }}
+            organization: MonitoringStack
+            credential_type: Machine
+            inputs:
+              username: {{ .Values.awx.linuxTest.username | quote }}
+              ssh_key_data: "{{ "{{ lookup('file', '/credentials/ssh-privatekey') }}" }}"
+            state: present
+          no_log: true
+        - awx.awx.job_template:
+            name: "Install Alloy - local Linux fixture"
+            organization: MonitoringStack
+            inventory: {{ .Values.awx.linuxTest.inventoryName | quote }}
+            project: MonitoringStack Agents
+            playbook: agents/ansible/playbooks/install-alloy-linux.yaml
+            execution_environment: MonitoringStack AWX EE
+            credentials: [{{ .Values.awx.linuxTest.credentialName | quote }}]
+            extra_vars:
+              monitoring_environment: dev
+              vault_addr: {{ .Values.awx.vault.server | quote }}
+              vault_kubernetes_role: {{ .Values.awx.vault.role | quote }}
+              vault_pki_issue_path: {{ .Values.awx.vault.pkiPath | quote }}
+              vault_ingestion_path: {{ .Values.awx.vault.ingestionPath | quote }}
+              alloy_config_repository: {{ .Values.awx.repository | quote }}
+              alloy_config_revision: {{ .Values.awx.revision | quote }}
+              alloy_environment:
+{{ toYaml .Values.awx.alloyEnvironment | nindent 16 }}
+            state: present
+{{- end }}
 ---
 apiVersion: batch/v1
 kind: Job
@@ -109,8 +212,18 @@ spec:
           volumeMounts:
             - name: config
               mountPath: /config
+{{- if .Values.awx.linuxTest.enabled }}
+            - name: linux-test-ssh
+              mountPath: /credentials
+              readOnly: true
+{{- end }}
       volumes:
         - name: config
           configMap:
             name: awx-bootstrap-playbook
+{{- if .Values.awx.linuxTest.enabled }}
+        - name: linux-test-ssh
+          secret:
+            secretName: {{ .Values.awx.linuxTest.credentialSecret }}
+{{- end }}
 {{- end }}

@@ -1,0 +1,10 @@
+---
+alloy_credentials_path: C:\\ProgramData\\GrafanaLabs\\Alloy\\credentials
+alloy_credentials_environment_registry_path: HKLM:\\SYSTEM\\CurrentControlSet\\Services\\Alloy
+monitoring_environment: dev
+vault_addr: ""
+vault_kubernetes_role: awx-agent
+vault_pki_issue_path: pki_int/issue/monitoring-client
+vault_ingestion_path: monitoring/data/ingestion
+vault_service_account_token_path: /var/run/secrets/kubernetes.io/serviceaccount/token
+vault_validate_certs: true

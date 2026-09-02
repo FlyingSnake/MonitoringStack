@@ -7,6 +7,7 @@ alloy_config_pull_frequency: 5m
 alloy_install_dir: C:\\Program Files\\GrafanaLabs\\Alloy
 alloy_installer_url: "https://github.com/grafana/alloy/releases/download/v{{ alloy_version }}/alloy-installer-windows-amd64.exe"
 alloy_credentials_path: C:\\ProgramData\\GrafanaLabs\\Alloy\\credentials
+alloy_credentials_environment_registry_path: HKLM:\\SYSTEM\\CurrentControlSet\\Services\\Alloy
 alloy_environment:
   LOKI_URL: https://loki.ingest.dev.example.internal/loki/api/v1/push
   MIMIR_REMOTE_WRITE_URL: https://mimir.ingest.dev.example.internal/api/v1/push

@@ -4,3 +4,4 @@
   gather_facts: false
   roles:
     - role: grafana_alloy_windows
+    - role: grafana_alloy_windows_credentials
