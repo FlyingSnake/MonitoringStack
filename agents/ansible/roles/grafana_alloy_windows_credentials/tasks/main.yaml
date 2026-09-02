@@ -1,0 +1,93 @@
+---
+- name: Vault 및 수집 인증 변수 확인
+  ansible.builtin.assert:
+    that:
+      - vault_addr | length > 0
+      - vault_kubernetes_role | length > 0
+  delegate_to: localhost
+
+- name: AWX 실행 Pod의 Kubernetes ServiceAccount JWT 읽기
+  ansible.builtin.slurp:
+    src: "{{ vault_service_account_token_path }}"
+  delegate_to: localhost
+  register: alloy_vault_jwt
+  no_log: true
+
+- name: Vault Kubernetes Auth 로그인
+  ansible.builtin.uri:
+    url: "{{ vault_addr }}/v1/auth/kubernetes/login"
+    method: POST
+    body_format: json
+    body:
+      role: "{{ vault_kubernetes_role }}"
+      jwt: "{{ alloy_vault_jwt.content | b64decode }}"
+    return_content: true
+    validate_certs: "{{ vault_validate_certs }}"
+  delegate_to: localhost
+  register: alloy_vault_login
+  no_log: true
+
+- name: 수집 Basic Auth 자격증명 읽기
+  ansible.builtin.uri:
+    url: "{{ vault_addr }}/v1/{{ vault_ingestion_path }}"
+    method: GET
+    headers:
+      X-Vault-Token: "{{ alloy_vault_login.json.auth.client_token }}"
+    return_content: true
+    validate_certs: "{{ vault_validate_certs }}"
+  delegate_to: localhost
+  register: alloy_ingestion_credentials
+  no_log: true
+
+- name: Windows 대상별 단기 mTLS 인증서 발급
+  ansible.builtin.uri:
+    url: "{{ vault_addr }}/v1/{{ vault_pki_issue_path }}"
+    method: POST
+    headers:
+      X-Vault-Token: "{{ alloy_vault_login.json.auth.client_token }}"
+    body_format: json
+    body:
+      common_name: "alloy-{{ monitoring_environment }}-{{ inventory_hostname }}"
+      ttl: 24h
+    return_content: true
+    validate_certs: "{{ vault_validate_certs }}"
+  delegate_to: localhost
+  register: alloy_client_certificate
+  no_log: true
+
+- name: Windows Alloy 인증서 디렉터리 생성
+  ansible.windows.win_file:
+    path: "{{ alloy_credentials_path }}"
+    state: directory
+
+- name: Windows Alloy CA 인증서 배포
+  ansible.windows.win_copy:
+    content: "{{ alloy_client_certificate.json.data.issuing_ca }}"
+    dest: "{{ alloy_credentials_path }}\\ca.crt"
+  no_log: true
+  notify: Alloy 서비스 재시작
+
+- name: Windows Alloy 클라이언트 인증서 배포
+  ansible.windows.win_copy:
+    content: "{{ alloy_client_certificate.json.data.certificate }}"
+    dest: "{{ alloy_credentials_path }}\\tls.crt"
+  no_log: true
+  notify: Alloy 서비스 재시작
+
+- name: Windows Alloy 클라이언트 개인키 배포
+  ansible.windows.win_copy:
+    content: "{{ alloy_client_certificate.json.data.private_key }}"
+    dest: "{{ alloy_credentials_path }}\\tls.key"
+  no_log: true
+  notify: Alloy 서비스 재시작
+
+- name: Windows Alloy 서비스별 수집 인증 환경변수 배포
+  ansible.windows.win_regedit:
+    path: "{{ alloy_credentials_environment_registry_path }}"
+    name: Environment
+    type: multistring
+    data:
+      - "INGEST_USERNAME={{ alloy_ingestion_credentials.json.data.data.username }}"
+      - "INGEST_PASSWORD={{ alloy_ingestion_credentials.json.data.data.password }}"
+  no_log: true
+  notify: Alloy 서비스 재시작

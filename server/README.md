@@ -21,7 +21,14 @@ server/env/
 
 values에는 이미지/차트 버전, 복제본 수, 리소스 제한, StorageClass, 오브젝트 스토리지 참조, Ingress/TLS, 보존 기간, 테넌트, 기능 플래그를 노출합니다. 자격증명은 값이 아닌 Secret 참조만 사용합니다.
 
-`dev` Vault는 운영자가 수동 초기화·Unseal하며, `stg`와 `prd` Vault는 EKS IRSA와 AWS KMS Auto-Unseal을 사용합니다. 실제 값이 없는 `REQUIRED_*` 항목이 남아 있으면 `scripts/preflight-server-env.sh <환경>`이 배포를 거부합니다.
+`dev` Vault는 운영자가 수동 초기화·Unseal하며, `stg`와 `prd` Vault는 EKS IRSA와 AWS KMS Auto-Unseal을 사용합니다. 실제 값이 없는 `REQUIRED_*` 항목 또는 `example.internal` 도메인이 남아 있으면 운영 사전검사가 배포를 거부합니다.
+
+stg/prd Argo CD 수동 Sync 직전에는 반드시 아래 명령을 실행합니다. 이 검사는 Vault KMS·IRSA, Gateway 이름·listener·환경 DNS, 운영 외부 저장소/Kafka 계약이 렌더링 가능한지 확인합니다.
+
+```bash
+make preflight-server ENV=stg
+make preflight-server ENV=prd
+```
 
 ## 계획된 구조
 

@@ -4,6 +4,11 @@
     path: "{{ alloy_install_dir }}"
     state: directory
 
+- name: Alloy 인증서 디렉터리 생성
+  ansible.windows.win_file:
+    path: "{{ alloy_credentials_path }}"
+    state: directory
+
 - name: Alloy 설치 프로그램 다운로드 및 설치
   ansible.windows.win_package:
     path: "{{ alloy_installer_url }}"

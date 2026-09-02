@@ -1,6 +1,7 @@
 declare "pipeline" {
   argument "hostname" {}
   argument "loki_url" {}
+  argument "mimir_remote_write_url" {}
   argument "tempo_otlp_http_endpoint" {}
   argument "ingest_username" {}
   argument "ingest_password" {}
@@ -33,6 +34,33 @@ declare "pipeline" {
     eventlog_name = "Application"
     forward_to    = [loki.write.default.receiver]
     labels = { job = "windows-eventlog" }
+  }
+
+  prometheus.exporter.windows "host" {}
+
+  prometheus.scrape "host" {
+    targets    = prometheus.exporter.windows.host.targets
+    forward_to = [prometheus.remote_write.default.receiver]
+  }
+
+  prometheus.remote_write "default" {
+    endpoint {
+      url = argument.mimir_remote_write_url.value
+      basic_auth {
+        username = argument.ingest_username.value
+        password = argument.ingest_password.value
+      }
+      tls_config {
+        ca_file   = argument.tls_ca_file.value
+        cert_file = argument.tls_cert_file.value
+        key_file  = argument.tls_key_file.value
+      }
+    }
+    external_labels = {
+      environment = argument.monitoring_environment.value,
+      instance    = argument.hostname.value,
+      source      = "windows",
+    }
   }
 
   otelcol.receiver.otlp "default" {
