@@ -35,9 +35,9 @@ chore/<간단한-설명>    # 문서·도구·정리 작업
 feature/fix/chore ──PR──► dev (dev) ──승격 PR──► stg (stg) ──승격 PR──► main (prd)
 ```
 
-1. `dev` 병합 후 개발 환경에 자동 동기화하고, CI와 관측성 smoke test를 통과시킨다.
+1. `dev` 병합 후 개발 환경에 수동 Sync하고, CI와 관측성 smoke test를 통과시킨다.
 2. 검증한 정확한 `dev` 커밋만 `stg`로 pull request를 만들어 승격한다. 스테이징 배포와 테스트를 완료한다.
-3. 승인한 `stg` 커밋만 `main`으로 pull request를 만들어 운영에 승격한다. 운영 자동 동기화는 조직의 변경 창 정책에 맞춰 허용하거나 수동 Sync로 둔다.
+3. 승인한 `stg` 커밋만 `main`으로 pull request를 만들어 운영에 승격한다. 모든 환경은 변경 창과 승인 절차에 따라 수동 Sync한다.
 4. 각 prd 배포 성공 시 `main`의 해당 커밋에 주석 태그 `v<주.부.수>`를 생성한다.
 
 환경 승격 pull request에서는 대상 환경의 `values.yaml`만 필요할 때 수정할 수 있다. 기능 변경을 승격 PR에서 추가하지 않으며, 대상 브랜치에만 존재하는 환경 설정은 다음 승격 시 충돌 여부를 반드시 확인한다.
