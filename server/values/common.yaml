@@ -242,6 +242,8 @@ applications:
       queryFrontend: { replicas: 1 }
       # Distributed 모드의 query frontend는 scheduler 연결이 필요하다.
       queryScheduler: { replicas: 1 }
+      # TSDB 인덱스 조회를 위한 index gateway는 분산 모드에서 필수다.
+      indexGateway: { replicas: 1 }
       compactor: { replicas: 1 }
 
   mimir:
