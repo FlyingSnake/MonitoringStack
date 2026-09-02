@@ -5,11 +5,13 @@
       - vault_addr | length > 0
       - vault_kubernetes_role | length > 0
   delegate_to: localhost
+  become: false
 
 - name: AWX 실행 Pod의 Kubernetes ServiceAccount JWT 읽기
   ansible.builtin.slurp:
     src: "{{ vault_service_account_token_path }}"
   delegate_to: localhost
+  become: false
   register: alloy_vault_jwt
   no_log: true
 
@@ -24,6 +26,7 @@
     return_content: true
     validate_certs: "{{ vault_validate_certs }}"
   delegate_to: localhost
+  become: false
   register: alloy_vault_login
   no_log: true
 
@@ -36,6 +39,7 @@
     return_content: true
     validate_certs: "{{ vault_validate_certs }}"
   delegate_to: localhost
+  become: false
   register: alloy_ingestion_credentials
   no_log: true
 
@@ -52,6 +56,7 @@
     return_content: true
     validate_certs: "{{ vault_validate_certs }}"
   delegate_to: localhost
+  become: false
   register: alloy_client_certificate
   no_log: true
 
