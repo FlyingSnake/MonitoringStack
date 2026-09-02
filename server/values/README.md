@@ -35,6 +35,8 @@ Vault 자체는 GitOps로 설치하지만 다음 작업은 root token 또는 rec
 
 `ingestion.htpasswd`는 Envoy Gateway Basic Auth가 요구하는 SHA htpasswd 형식이다. Alloy에 제공하는 평문 사용자·암호와 PKI client certificate는 AWX credential/Vault PKI role로만 배포하며 Git에 저장하지 않는다.
 
+로컬 Vault bootstrap 스크립트도 같은 SHA 형식을 생성한다. BCrypt 형식은 Envoy Gateway SecurityPolicy에서 지원하지 않으므로 사용하지 않는다.
+
 ## Gateway 계약
 
 기존 Gateway는 두 HTTPS listener를 제공해야 합니다.

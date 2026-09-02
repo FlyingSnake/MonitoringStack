@@ -2,7 +2,7 @@
 
 `server/`는 중앙 관측성 플랫폼을 위한 선언형 Kubernetes 설정을 담습니다. Application sync wave는 Namespace 기반 리소스 → Vault → 인증서/Secret → Keycloak → 저장소 → 관측성 → Gateway 정책 → AWX 순서입니다. 독립적으로 수동 Sync하는 Helm Application이 대상 namespace를 먼저 요구하므로, foundation 차트가 유일하게 `-01` wave를 사용합니다.
 
-Argo CD는 Helm으로 한 번 부트스트랩한 뒤 `Application`과 `AppProject` CR을 통해 모든 플랫폼 애플리케이션을 수동 동기화합니다. 대상 워크로드는 Vault, cert-manager, External Secrets, Keycloak, MinIO/Redpanda, Grafana Operator/Grafana, Loki, Tempo, Mimir, Pyroscope, blackbox exporter, 서버 Alloy, AWX Operator, AWX입니다.
+Argo CD는 Helm으로 한 번 부트스트랩한 뒤 `Application`과 `AppProject` CR을 통해 모든 플랫폼 애플리케이션을 수동 동기화합니다. 대상 워크로드는 Vault, cert-manager, External Secrets, Keycloak, MinIO/Redpanda, Grafana Operator/Grafana, Loki, Tempo, Mimir, Pyroscope, blackbox exporter, 서버 Alloy, AWX Operator, AWX입니다. `dev` Kind 검증에서는 위 Application이 모두 `Synced`·`Healthy` 상태여야 합니다.
 
 Mimir와 Tempo는 공용 `monitoring-stack-server` namespace에 배포되며 Redpanda Kafka를 공용으로 사용합니다. Loki와 Pyroscope는 각각 별도 namespace를 유지합니다.
 
@@ -41,3 +41,9 @@ server/
 ```
 
 컴포넌트를 추가하거나 배포 순서를 변경하기 전 [../IMPLEMENTATION_PLAN.md](../IMPLEMENTATION_PLAN.md)를 확인하세요.
+
+## dev/Kind 검증 범위
+
+로컬 Kind는 `server/env/dev/values.yaml` 위에 `local/server/values.yaml`을 겹쳐 모든 서버 컴포넌트를 단일 복제본·비영속 스토리지로 기동합니다. local Git daemon의 `dev` 브랜치를 Argo CD source로 사용하므로 원격 push 없이도 수동 Sync를 검증할 수 있습니다.
+
+수집 endpoint는 `loki|mimir|tempo|pyroscope.ingest.localhost`이며, Gateway에서 mTLS와 HTTP Basic Auth를 동시에 검증합니다. Vault bootstrap 뒤에만 ExternalSecret, Gateway TLS, AWX용 PKI와 Alloy client certificate를 생성합니다. 자세한 실행 순서는 [../local/README.md](../local/README.md)를 참고하세요.

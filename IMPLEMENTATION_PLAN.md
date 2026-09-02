@@ -1,4 +1,27 @@
-# Grafana OSS 관측성 스택 GitOps 구현 계획
+# Grafana OSS 관측성 스택 GitOps 구현 현황 및 계획
+
+## 현재 구현 현황
+
+`dev` 브랜치에는 중앙 서버와 AWX 기반 Alloy 배포의 1차 구현이 반영되어 있다. Argo CD는 자동 Sync를 사용하지 않으며, 각 Application을 sync wave 순서로 수동 동기화한다.
+
+| 영역 | 구현·검증 상태 |
+| --- | --- |
+| GitOps 기반 | Argo CD bootstrap, AppProject, 환경별 `targetRevision`, local Git daemon 기반 Kind 소스 검증 완료 |
+| 보안·인증 | Vault, External Secrets, Vault PKI, Gateway UI/수집 listener, 수집 mTLS + HTTP Basic Auth 구현 및 로컬 회귀 검증 완료 |
+| 인증·UI | Keycloak realm/client 선언, Grafana·Argo CD·AWX OIDC 설정 선언 및 Grafana datasource CR 등록 완료 |
+| 저장소·큐 | dev MinIO와 Redpanda, Loki/Mimir/Tempo/Pyroscope의 S3·Kafka 연결 구현 완료 |
+| 관측성 | Grafana Operator, Loki Distributed, Mimir, Tempo, Pyroscope, blackbox exporter, 서버 Alloy를 Kind 단일 복제본으로 검증 완료 |
+| Kubernetes Alloy | AWX → Vault Kubernetes Auth → 단기 인증서/Basic Auth Secret → Alloy DaemonSet 흐름 검증 완료 |
+| Linux Alloy | AWX → SSH fixture → Vault PKI → systemd Alloy 배포와 로그·메트릭·트레이스·프로파일 전송 검증 완료 |
+| Windows Alloy | 인벤토리·Job Template·Ansible 역할·Vault credential 계약 구현 및 정적 검증 완료. 실제 WinRM 대상 검증 대기 |
+| .NET 워크로드 | 멀티 아키텍처 초기화와 ARM64 graceful fallback 구현. ARM64 Kind에서 로그·메트릭·트레이스 검증 완료, 프로파일은 wrapper 제공 전까지 보류 |
+
+### 현재 후속 작업
+
+- 실제 Windows WinRM 대상에서 Alloy 설치·업그레이드와 Event Log 수집을 검증한다.
+- 신뢰할 수 있는 로컬 CA 또는 테스트 계정을 제공한 뒤 Grafana 브라우저 Keycloak 로그인과 datasource Explore 조회를 수행한다.
+- x86_64 Linux 또는 ARM64 ApiWrapper를 제공하는 Pyroscope .NET profiler 릴리스에서 .NET 프로파일을 검증한다.
+- `stg`/`prd`의 실제 EKS, KMS/IRSA, Gateway, 외부 S3·Kafka 입력값이 준비된 뒤 `make preflight-server ENV=<환경>`을 통과시켜 수동 Sync한다.
 
 ## 1. 목표와 범위
 
@@ -7,7 +30,7 @@
 - 중앙 서버: 로그(Loki), 메트릭(Mimir), 트레이스(Tempo), 프로파일(Pyroscope), 시각화/운영(Grafana, Argo CD, Keycloak, AWX)을 Kubernetes에 배포한다.
 - 에이전트: AWX가 Git으로 관리되는 인벤토리와 Ansible 플레이북을 실행하여 Grafana Alloy를 설치·업그레이드한다.
 - 설정: 각 환경의 `values.yaml`이 배포 토폴로지, 엔드포인트, 리소스, 기능 활성화 여부를 제어한다.
-- 구성 배포: Argo CD `Application`/`AppProject` CR을 Git에서 선언하고 자동 동기화한다.
+- 구성 배포: Argo CD `Application`/`AppProject` CR을 Git에서 선언하고 운영자가 수동 동기화한다.
 - 비밀값: Git에 평문으로 저장하지 않는다. SOPS+age 또는 External Secrets를 표준으로 삼고, 환경별 키/시크릿 참조만 Git에 둔다.
 
 ## 2. 권장 아키텍처
@@ -103,7 +126,7 @@
 
 ### 5.2 Argo CD 계층과 동기화 순서
 
-`AppProject`는 `platform`, `observability`, `automation`으로 분리하고, 차트 버전은 모두 고정한다. 자동 동기화에는 `prune`, `selfHeal`, 재시도 정책을 넣고, 운영 환경은 PR 승인/Sync Window를 추가한다.
+`AppProject`는 `platform`, `observability`, `automation`으로 분리하고, 차트 버전은 모두 고정한다. 모든 환경은 자동 동기화 없이 운영자가 sync wave 순서에 따라 수동 Sync하며, `prune`은 마이그레이션·삭제 영향 검토 후에만 사용한다.
 
 1. `00-prerequisites`: namespace, CRD, External Secrets/SOPS, cert-manager, ingress/gateway, StorageClass/NetworkPolicy
 2. `10-identity`: Keycloak 및 OIDC client/realm 초기 설정
@@ -184,19 +207,19 @@ PR마다 다음을 실행한다.
 3. Ansible `ansible-lint`, inventory parse, `--check` 및 Molecule(가능한 역할).
 4. `alloy fmt` 및 `alloy run`/syntax 검증으로 `agents/alloy` 모듈 테스트.
 5. SOPS 평문/토큰/개인키 탐지 및 정책 검사.
-6. `dev` 자동 sync → smoke test(각 endpoint write/read, Grafana datasource, AWX job) → `stg` 승인 → `main`(prd) 승인 순으로 승격.
+6. `dev` 수동 Sync → smoke test(각 endpoint write/read, Grafana datasource, AWX job) → `stg` 승인·수동 Sync → `main`(prd) 승인·수동 Sync 순으로 승격.
 
 운영 확인 항목은 수집 성공률, remote-write 오류, object storage 용량, compactor/ring 상태, Alloy configuration reload, AWX job 결과, 인증서 만료를 포함한다.
 
 ## 8. 단계별 구현 순서
 
-1. **기반 골격**: 위 디렉터리, `.gitignore`, README, Makefile/task runner, schema/lint CI를 추가한다.
-2. **Argo CD bootstrap**: `server/env/*/values.yaml`, Argo CD Helm values, root Application, AppProject를 구현한다.
-3. **공통 인프라**: ingress/cert-manager, External Secrets/SOPS, Keycloak, object storage, Kafka/Redpanda를 구현한다.
-4. **관측성 백엔드**: Grafana Operator/Grafana부터 Loki → Mimir → Tempo → Pyroscope → blackbox 순으로 Application과 values를 구현한다.
-5. **AWX**: AWX Operator/AWX CR, OIDC, execution environment, SCM Project와 선언형 AWX objects를 구현한다.
-6. **Ansible/Alloy**: Linux → Kubernetes → Windows 순으로 role, inventory, Job Template, Alloy 모듈을 구현한다.
-7. **보안·운영화**: tenant/권한/NetworkPolicy, backup/restore, retention, alerting, dashboard, 부하·장애 테스트를 추가한다.
+1. **기반 골격**: 완료. 디렉터리, `.gitignore`, README, Makefile/task runner, YAML·Helm·Ansible 검증을 추가했다.
+2. **Argo CD bootstrap**: 완료. 환경 values, Argo CD Helm values, Root Application, AppProject와 local Git source를 구현했다.
+3. **공통 인프라**: 완료(dev/local). Vault, cert-manager, External Secrets, Keycloak, MinIO, Redpanda, Gateway·NetworkPolicy를 구현했다.
+4. **관측성 백엔드**: 완료(dev/local). Grafana Operator/Grafana, Loki, Mimir, Tempo, Pyroscope, blackbox와 서버 Alloy를 배포·검증했다.
+5. **AWX**: 완료(dev/local). AWX Operator/AWX CR, 실행 환경, SCM Project, Git inventory, 선언형 Job Template을 구현했다.
+6. **Ansible/Alloy**: Kubernetes와 Linux 실제 검증 완료, Windows는 선언형 구현·정적 검증 완료 상태다.
+7. **보안·운영화**: mTLS·Basic Auth·Vault PKI·기본 NetworkPolicy는 완료했다. Windows 실대상, 백업/복구, retention·alerting/dashboard 확장, 부하·장애 테스트는 후속 작업이다.
 
 ## 9. 구현 전 확정할 운영 입력값
 
@@ -208,7 +231,7 @@ PR마다 다음을 실행한다.
 - Tempo distributed를 위한 Kafka/Redpanda 운영 방식
 - Linux SSH·Windows WinRM·Kubernetes 접근 방식 및 AWX credential 보관 방식
 - 프로파일링 대상 언어/런타임과 eBPF 사용 가능 커널/권한
-- dev/stg/prd의 HA, 리소스, 자동 동기화 및 변경 승인 정책
+- dev/stg/prd의 HA, 리소스, 수동 Sync 절차 및 변경 승인 정책
 
 ## 참고한 공식 문서
 
