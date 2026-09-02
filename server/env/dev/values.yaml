@@ -47,6 +47,12 @@ applications:
       rollout_operator: { enabled: true }
       ruler: { replicas: 1 }
       store_gateway: { replicas: 1, zoneAwareReplication: { enabled: false } }
+  tempo:
+    values:
+      # local/dev는 ingester가 하나뿐이므로 기본 복제 계수(3)를 사용하면 모든 trace 수신이 503으로 실패한다.
+      ingester:
+        config:
+          replication_factor: 1
   pyroscope:
     values:
       # 서버 Alloy Application이 수집을 담당하므로 Pyroscope 차트의 내장 Alloy는 끈다.
