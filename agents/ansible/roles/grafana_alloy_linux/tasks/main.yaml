@@ -4,6 +4,8 @@
     name: alloy
     system: true
     shell: /usr/sbin/nologin
+    groups: systemd-journal
+    append: true
 
 - name: Alloy 압축 해제 의존 패키지 설치
   ansible.builtin.package:
