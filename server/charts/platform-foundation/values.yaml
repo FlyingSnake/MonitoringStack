@@ -2,6 +2,7 @@ namespaces: []
 bootstrapServiceAccounts: []
 protectedNamespaces: []
 gatewayNamespace: gateway-system
+gatewayEgressPorts: [443]
 admissionWebhooks: []
 apiServerCidrs: []
 externalEgress: []
