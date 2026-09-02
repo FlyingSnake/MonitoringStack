@@ -41,7 +41,8 @@ applications:
       overrides_exporter: { enabled: false }
       querier: { replicas: 1 }
       query_frontend: { replicas: 1 }
-      query_scheduler: { enabled: false }
+      # query frontend가 활성화된 분산 Mimir는 scheduler 없이 요청을 처리할 수 없다.
+      query_scheduler: { enabled: true, replicas: 1 }
       # 기존 상태에서 scale-down admission webhook을 제공한다. 단일 replica로 유지한다.
       rollout_operator: { enabled: true }
       ruler: { replicas: 1 }
