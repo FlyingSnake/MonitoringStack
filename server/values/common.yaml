@@ -299,9 +299,11 @@ applications:
     syncWave: "32"
     source: { type: helm, repoURL: "https://grafana.github.io/helm-charts", chart: pyroscope, targetRevision: 2.2.1 }
     values:
-      global:
-        extraEnvFrom: [{ secretRef: { name: object-storage-credentials } }]
       pyroscope:
+        # Pyroscope 차트는 전역 extraEnvFrom을 소비하지 않는다. S3 자격증명은
+        # StatefulSet의 환경변수로 주입하고 config 내 ${...}를 명시적으로 확장한다.
+        extraArgs: { config.expand-env: "true" }
+        extraEnvFrom: [{ secretRef: { name: object-storage-credentials } }]
         config: |
           storage:
             backend: s3
