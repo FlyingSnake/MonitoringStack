@@ -134,7 +134,9 @@ spec:
             matchLabels:
               kubernetes.io/metadata.name: {{ $.Values.gatewayNamespace }}
       ports:
-        - { protocol: TCP, port: 443 }
+{{- range $.Values.gatewayEgressPorts }}
+        - { protocol: TCP, port: {{ . }} }
+{{- end }}
 {{- if $.Values.apiServerCidrs }}
     - to:
 {{- range $.Values.apiServerCidrs }}
