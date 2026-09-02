@@ -209,7 +209,7 @@ applications:
         datasources:
           - { name: loki, uid: loki, displayName: Loki, type: loki, url: "http://loki-gateway.loki.svc.cluster.local", isDefault: false }
           - { name: mimir, uid: mimir, displayName: Mimir, type: prometheus, url: "http://mimir-gateway.monitoring-stack-server.svc.cluster.local/prometheus", isDefault: true }
-          - { name: tempo, uid: tempo, displayName: Tempo, type: tempo, url: "http://tempo-query-frontend.monitoring-stack-server.svc.cluster.local:3100", isDefault: false, jsonData: { tracesToLogsV2: { datasourceUid: loki }, tracesToProfiles: { datasourceUid: pyroscope } } }
+          - { name: tempo, uid: tempo, displayName: Tempo, type: tempo, url: "http://tempo-query-frontend.monitoring-stack-server.svc.cluster.local:3200", isDefault: false, jsonData: { tracesToLogsV2: { datasourceUid: loki }, tracesToProfiles: { datasourceUid: pyroscope } } }
           - { name: pyroscope, uid: pyroscope, displayName: Pyroscope, type: grafana-pyroscope-datasource, url: "http://pyroscope.pyroscope.svc.cluster.local:4040", isDefault: false }
 
   loki:
