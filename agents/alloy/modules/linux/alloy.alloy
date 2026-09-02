@@ -109,4 +109,15 @@ declare "pipeline" {
       source      = "linux",
     }
   }
+
+  // Linux 애플리케이션 프로파일러는 localhost Alloy receiver로만 전송한다.
+  // eBPF 프로파일링은 root 및 host PID namespace가 필요하므로 별도 승인된
+  // 배포 모드에서만 활성화한다.
+  pyroscope.receive_http "default" {
+    http {
+      listen_address = "127.0.0.1"
+      listen_port    = 4040
+    }
+    forward_to = [pyroscope.write.default.receiver]
+  }
 }
