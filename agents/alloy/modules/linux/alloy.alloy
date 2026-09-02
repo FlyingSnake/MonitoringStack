@@ -1,123 +1,142 @@
 declare "pipeline" {
-  argument "hostname" {}
-  argument "loki_url" {}
-  argument "mimir_remote_write_url" {}
-  argument "tempo_otlp_http_endpoint" {}
-  argument "pyroscope_url" {}
-  argument "ingest_username" {}
-  argument "ingest_password" {}
-  argument "tls_ca_file" {}
-  argument "tls_cert_file" {}
-  argument "tls_key_file" {}
-  argument "monitoring_environment" {}
+	argument "hostname" { }
 
-  loki.write "default" {
-    endpoint {
-      url = argument.loki_url.value
-      basic_auth {
-        username = argument.ingest_username.value
-        password = argument.ingest_password.value
-      }
-      tls_config {
-        ca_file   = argument.tls_ca_file.value
-        cert_file = argument.tls_cert_file.value
-        key_file  = argument.tls_key_file.value
-      }
-    }
-    external_labels = {
-      environment = argument.monitoring_environment.value,
-      host        = argument.hostname.value,
-      source      = "linux",
-    }
-  }
+	argument "loki_url" { }
 
-  loki.source.journal "default" {
-    forward_to = [loki.write.default.receiver]
-    labels = {
-      job = "journal",
-    }
-  }
+	argument "mimir_remote_write_url" { }
 
-  prometheus.exporter.unix "host" {}
+	argument "tempo_otlp_http_endpoint" { }
 
-  prometheus.scrape "host" {
-    targets    = prometheus.exporter.unix.host.targets
-    forward_to = [prometheus.remote_write.default.receiver]
-  }
+	argument "pyroscope_url" { }
 
-  prometheus.remote_write "default" {
-    endpoint {
-      url = argument.mimir_remote_write_url.value
-      basic_auth {
-        username = argument.ingest_username.value
-        password = argument.ingest_password.value
-      }
-      tls_config {
-        ca_file   = argument.tls_ca_file.value
-        cert_file = argument.tls_cert_file.value
-        key_file  = argument.tls_key_file.value
-      }
-    }
-    external_labels = {
-      environment = argument.monitoring_environment.value,
-      instance    = argument.hostname.value,
-      source      = "linux",
-    }
-  }
+	argument "ingest_username" { }
 
-  otelcol.receiver.otlp "default" {
-    grpc {}
-    http {}
-    output {
-      traces = [otelcol.exporter.otlphttp.tempo.input]
-    }
-  }
+	argument "ingest_password" { }
 
-  otelcol.auth.basic "ingest" {
-    username = argument.ingest_username.value
-    password = argument.ingest_password.value
-  }
+	argument "tls_ca_file" { }
 
-  otelcol.exporter.otlphttp "tempo" {
-    client {
-      endpoint = argument.tempo_otlp_http_endpoint.value
-      auth     = otelcol.auth.basic.ingest.handler
-      tls {
-        ca_file   = argument.tls_ca_file.value
-        cert_file = argument.tls_cert_file.value
-        key_file  = argument.tls_key_file.value
-      }
-    }
-  }
+	argument "tls_cert_file" { }
 
-  pyroscope.write "default" {
-    endpoint {
-      url = argument.pyroscope_url.value
-      basic_auth {
-        username = argument.ingest_username.value
-        password = argument.ingest_password.value
-      }
-      tls_config {
-        ca_file   = argument.tls_ca_file.value
-        cert_file = argument.tls_cert_file.value
-        key_file  = argument.tls_key_file.value
-      }
-    }
-    external_labels = {
-      environment = argument.monitoring_environment.value,
-      host        = argument.hostname.value,
-      source      = "linux",
-    }
-  }
+	argument "tls_key_file" { }
 
-  // Linux 애플리케이션 프로파일러는 localhost Alloy receiver로만 전송한다.
-  // eBPF 프로파일링은 root 및 host PID namespace가 필요하므로 별도 승인된
-  // 배포 모드에서만 활성화한다.
-  pyroscope.receive_http "default" {
-    http {
-      listen_address = "127.0.0.1"
-      listen_port    = 4040
-    }
-    forward_to = [pyroscope.write.default.receiver]
-  }
+	argument "monitoring_environment" { }
+
+	loki.write "default" {
+		endpoint {
+			url = argument.loki_url.value
+
+			basic_auth {
+				username = argument.ingest_username.value
+				password = argument.ingest_password.value
+			}
+
+			tls_config {
+				ca_file   = argument.tls_ca_file.value
+				cert_file = argument.tls_cert_file.value
+				key_file  = argument.tls_key_file.value
+			}
+		}
+		external_labels = {
+			environment = argument.monitoring_environment.value,
+			host        = argument.hostname.value,
+			source      = "linux",
+		}
+	}
+
+	loki.source.journal "default" {
+		forward_to = [loki.write.default.receiver]
+		labels     = {
+			job = "journal",
+		}
+	}
+
+	prometheus.exporter.unix "host" { }
+
+	prometheus.scrape "host" {
+		targets    = prometheus.exporter.unix.host.targets
+		forward_to = [prometheus.remote_write.default.receiver]
+	}
+
+	prometheus.remote_write "default" {
+		endpoint {
+			url = argument.mimir_remote_write_url.value
+
+			basic_auth {
+				username = argument.ingest_username.value
+				password = argument.ingest_password.value
+			}
+
+			tls_config {
+				ca_file   = argument.tls_ca_file.value
+				cert_file = argument.tls_cert_file.value
+				key_file  = argument.tls_key_file.value
+			}
+		}
+		external_labels = {
+			environment = argument.monitoring_environment.value,
+			instance    = argument.hostname.value,
+			source      = "linux",
+		}
+	}
+
+	otelcol.receiver.otlp "default" {
+		grpc { }
+
+		http { }
+
+		output {
+			traces = [otelcol.exporter.otlphttp.tempo.input]
+		}
+	}
+
+	otelcol.auth.basic "ingest" {
+		username = argument.ingest_username.value
+		password = argument.ingest_password.value
+	}
+
+	otelcol.exporter.otlphttp "tempo" {
+		client {
+			endpoint = argument.tempo_otlp_http_endpoint.value
+			auth     = otelcol.auth.basic.ingest.handler
+
+			tls {
+				ca_file   = argument.tls_ca_file.value
+				cert_file = argument.tls_cert_file.value
+				key_file  = argument.tls_key_file.value
+			}
+		}
+	}
+
+	pyroscope.write "default" {
+		endpoint {
+			url = argument.pyroscope_url.value
+
+			basic_auth {
+				username = argument.ingest_username.value
+				password = argument.ingest_password.value
+			}
+
+			tls_config {
+				ca_file   = argument.tls_ca_file.value
+				cert_file = argument.tls_cert_file.value
+				key_file  = argument.tls_key_file.value
+			}
+		}
+		external_labels = {
+			environment = argument.monitoring_environment.value,
+			host        = argument.hostname.value,
+			source      = "linux",
+		}
+	}
+
+	// Linux 애플리케이션 프로파일러는 localhost Alloy receiver로만 전송한다.
+	// eBPF 프로파일링은 root 및 host PID namespace가 필요하므로 별도 승인된
+	// 배포 모드에서만 활성화한다.
+	pyroscope.receive_http "default" {
+		http {
+			listen_address = "127.0.0.1"
+			listen_port    = 4040
+		}
+		forward_to = [pyroscope.write.default.receiver]
+	}
 }
