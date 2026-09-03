@@ -62,8 +62,10 @@ applications:
       gateway:
         name: platform-gateway
         namespace: gateway-system
+        httpListener: http
         uiListener: ui-https
         ingestListener: ingest-https
+        uiHttpRedirect: { enabled: true, statusCode: 301 }
         tls:
           uiDnsNames: [grafana.dev.example.internal, argocd.dev.example.internal, keycloak.dev.example.internal, awx.dev.example.internal]
           ingestDnsNames: [loki.ingest.dev.example.internal, mimir.ingest.dev.example.internal, tempo.ingest.dev.example.internal, pyroscope.ingest.dev.example.internal]
