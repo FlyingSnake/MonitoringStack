@@ -2,8 +2,12 @@ gateway:
   enabled: false
   name: platform-gateway
   namespace: gateway-system
+  httpListener: http
   uiListener: ui-https
   ingestListener: ingest-https
+  uiHttpRedirect:
+    enabled: false
+    statusCode: 301
   issuer:
     name: vault-pki
     kind: Issuer

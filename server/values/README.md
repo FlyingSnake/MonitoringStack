@@ -44,4 +44,6 @@ Vault 자체는 GitOps로 설치하지만 다음 작업은 root token 또는 rec
 - `ui-https`: Grafana, Argo CD, Keycloak, AWX의 OIDC 브라우저 트래픽
 - `ingest-https`: `*.ingest.<env>.<baseDomain>`의 Alloy 수집 트래픽. Envoy Gateway mTLS와 HTTP Basic Auth를 모두 적용
 
+UI HTTP 요청을 HTTPS로 전환하려면 Gateway에 HTTP listener를 추가하고 해당 이름을 `gateway.httpListener`에 설정한다. `gateway.uiHttpRedirect.enabled: true`이면 UI route마다 동일 hostname의 HTTPRoute가 생성되어 경로와 query string을 유지한 채 HTTPS `301`로 리다이렉트한다. 기존 Gateway에 HTTP listener가 없는 환경에서는 이 플래그를 `false`로 유지한다.
+
 Gateway TLS Secret은 `monitoring-ui-tls`, `monitoring-ingest-tls`이며 cert-manager Vault Issuer가 갱신합니다. 운영 Gateway가 이미 존재하더라도 listener와 certificateRef는 이 이름을 참조하도록 준비해야 합니다.
