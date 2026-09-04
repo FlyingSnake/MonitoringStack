@@ -1,0 +1,99 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: telemetry-workloads
+  labels:
+    # Alloy namespace의 default-deny 정책에서 허용하는 플랫폼 workload label.
+    app.kubernetes.io/part-of: monitoring-stack
+    monitoring-stack.io/purpose: telemetry-test
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: dotnet-telemetry
+  namespace: telemetry-workloads
+spec:
+  replicas: 1
+  selector: { matchLabels: { app: dotnet-telemetry } }
+  template:
+    metadata:
+      labels: { app: dotnet-telemetry }
+      annotations: { prometheus.io/scrape: "true", prometheus.io/path: /metrics, prometheus.io/port: "8080" }
+    spec:
+      containers:
+        - name: app
+          image: monitoring-stack/dotnet-telemetry:0.1.0
+          imagePullPolicy: IfNotPresent
+          ports: [{ containerPort: 8080 }]
+          env:
+            - { name: OTEL_EXPORTER_OTLP_ENDPOINT, value: http://alloy.alloy.svc.cluster.local:4318 }
+            - { name: PYROSCOPE_SERVER_ADDRESS, value: http://alloy.alloy.svc.cluster.local:9999 }
+            - { name: PYROSCOPE_APPLICATION_NAME, value: telemetry.dotnet }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: java-telemetry
+  namespace: telemetry-workloads
+spec:
+  replicas: 1
+  selector: { matchLabels: { app: java-telemetry } }
+  template:
+    metadata:
+      labels: { app: java-telemetry }
+      annotations: { prometheus.io/scrape: "true", prometheus.io/path: /metrics, prometheus.io/port: "8080" }
+    spec:
+      containers:
+        - name: app
+          image: monitoring-stack/java-telemetry:0.1.0
+          imagePullPolicy: IfNotPresent
+          ports: [{ containerPort: 8080 }]
+          env:
+            - { name: OTEL_EXPORTER_OTLP_ENDPOINT, value: http://alloy.alloy.svc.cluster.local:4318 }
+            - { name: PYROSCOPE_SERVER_ADDRESS, value: http://alloy.alloy.svc.cluster.local:9999 }
+            - { name: PYROSCOPE_APPLICATION_NAME, value: telemetry.java }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: go-telemetry
+  namespace: telemetry-workloads
+spec:
+  replicas: 1
+  selector: { matchLabels: { app: go-telemetry } }
+  template:
+    metadata:
+      labels: { app: go-telemetry }
+      annotations: { prometheus.io/scrape: "true", prometheus.io/path: /metrics, prometheus.io/port: "8080" }
+    spec:
+      containers:
+        - name: app
+          image: monitoring-stack/go-telemetry:0.1.0
+          imagePullPolicy: IfNotPresent
+          ports: [{ containerPort: 8080 }]
+          env:
+            - { name: OTEL_EXPORTER_OTLP_ENDPOINT, value: http://alloy.alloy.svc.cluster.local:4318 }
+            - { name: PYROSCOPE_SERVER_ADDRESS, value: http://alloy.alloy.svc.cluster.local:9999 }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nodejs-telemetry
+  namespace: telemetry-workloads
+spec:
+  replicas: 1
+  selector: { matchLabels: { app: nodejs-telemetry } }
+  template:
+    metadata:
+      labels: { app: nodejs-telemetry }
+      annotations: { prometheus.io/scrape: "true", prometheus.io/path: /metrics, prometheus.io/port: "8080" }
+    spec:
+      containers:
+        - name: app
+          image: monitoring-stack/nodejs-telemetry:0.1.0
+          imagePullPolicy: IfNotPresent
+          ports: [{ containerPort: 8080 }]
+          env:
+            - { name: OTEL_EXPORTER_OTLP_ENDPOINT, value: http://alloy.alloy.svc.cluster.local:4318 }
+            - { name: PYROSCOPE_SERVER_ADDRESS, value: http://alloy.alloy.svc.cluster.local:9999 }
+            - { name: PYROSCOPE_APPLICATION_NAME, value: telemetry.nodejs }

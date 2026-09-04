@@ -81,13 +81,11 @@
   no_log: true
   notify: Alloy 서비스 재시작
 
-- name: Windows Alloy 서비스별 수집 인증 환경변수 배포
+- name: Windows Alloy 서비스 환경변수 배포
   ansible.windows.win_regedit:
     path: "{{ alloy_credentials_environment_registry_path }}"
     name: Environment
     type: multistring
-    data:
-      - "INGEST_USERNAME={{ alloy_ingestion_credentials.json.data.data.username }}"
-      - "INGEST_PASSWORD={{ alloy_ingestion_credentials.json.data.data.password }}"
+    data: "{{ (alloy_environment | dictsort | map('join', '=') | list) + ['INGEST_USERNAME=' ~ alloy_ingestion_credentials.json.data.data.username, 'INGEST_PASSWORD=' ~ alloy_ingestion_credentials.json.data.data.password] }}"
   no_log: true
   notify: Alloy 서비스 재시작

@@ -139,10 +139,20 @@ data:
 {{ toYaml .Values.awx.alloyEnvironment | nindent 16 }}
             state: present
 {{- if .Values.awx.linuxTest.enabled }}
+        - name: 로컬 Linux fixture SSH 키 존재 여부 확인
+          ansible.builtin.stat:
+            path: /credentials/ssh-privatekey
+          register: monitoring_linux_fixture_ssh_key
+          no_log: true
+        - name: 로컬 Linux fixture가 준비되지 않은 경우 안내
+          ansible.builtin.debug:
+            msg: Local Linux fixture credential is unavailable; the Linux fixture objects will be created by the next AWX config sync after local-linux-alloy-smoke creates it.
+          when: not monitoring_linux_fixture_ssh_key.stat.exists
         - awx.awx.inventory:
             name: {{ .Values.awx.linuxTest.inventoryName | quote }}
             organization: MonitoringStack
             state: present
+          when: monitoring_linux_fixture_ssh_key.stat.exists
         - awx.awx.host:
             name: {{ .Values.awx.linuxTest.hostName | quote }}
             inventory: {{ .Values.awx.linuxTest.inventoryName | quote }}
@@ -152,11 +162,13 @@ data:
               ansible_user: {{ .Values.awx.linuxTest.username | quote }}
               ansible_python_interpreter: /usr/bin/python3
             state: present
+          when: monitoring_linux_fixture_ssh_key.stat.exists
         - awx.awx.group:
             name: alloy_linux
             inventory: {{ .Values.awx.linuxTest.inventoryName | quote }}
             hosts: [{{ .Values.awx.linuxTest.hostName | quote }}]
             state: present
+          when: monitoring_linux_fixture_ssh_key.stat.exists
         - awx.awx.credential:
             name: {{ .Values.awx.linuxTest.credentialName | quote }}
             organization: MonitoringStack
@@ -166,6 +178,7 @@ data:
               ssh_key_data: "{{ "{{ lookup('file', '/credentials/ssh-privatekey') }}" }}"
             state: present
           no_log: true
+          when: monitoring_linux_fixture_ssh_key.stat.exists
         - awx.awx.job_template:
             name: "Install Alloy - local Linux fixture"
             organization: MonitoringStack
@@ -185,6 +198,7 @@ data:
               alloy_environment:
 {{ toYaml .Values.awx.alloyEnvironment | nindent 16 }}
             state: present
+          when: monitoring_linux_fixture_ssh_key.stat.exists
 {{- end }}
 ---
 apiVersion: batch/v1
@@ -230,5 +244,6 @@ spec:
         - name: linux-test-ssh
           secret:
             secretName: {{ .Values.awx.linuxTest.credentialSecret }}
+            optional: true
 {{- end }}
 {{- end }}

@@ -15,4 +15,4 @@ External Secrets CRD는 최초 설치 시 server-side apply가 필요합니다. 
 ./bootstrap/install-external-secrets-crds.sh
 ```
 
-Root Application과 하위 Application은 자동 동기화하지 않습니다. 환경별 sync wave 순서에 따라 Argo CD UI 또는 API에서 수동 Sync하고, `stg`/`prd`는 먼저 `make preflight-server ENV=<환경>`을 통과해야 합니다. Kind에서는 `local/git-server/`를 시작·갱신한 뒤 `local/server/deploy-gitops.sh`를 사용합니다.
+Root Application과 하위 Application은 자동 동기화하지 않습니다. 환경별 sync wave 순서에 따라 Argo CD UI 또는 API에서 수동 Sync하고, Sync 전에는 `make preflight-server ENV=<환경>`을 통과해야 합니다. Kind에서는 `scripts/local/git-server/start.sh`로 local Git daemon을 시작·갱신한 뒤 `scripts/local/server/deploy-gitops.sh`를 사용합니다. 개인별 local values와 Vault 상태는 Git 추적 제외 대상인 `local/`에만 둡니다.

@@ -2,7 +2,7 @@
 set -euo pipefail
 
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-image="${AWX_EE_IMAGE:-monitoring-stack-awx-ee:0.1.0}"
+image="${AWX_EE_IMAGE:-monitoring-stack-awx-ee:0.1.1}"
 
 if ! docker image inspect "${image}" >/dev/null 2>&1; then
   echo "AWX execution environment image is unavailable: ${image}" >&2
@@ -15,9 +15,13 @@ docker run --rm \
   --workdir /workspace \
   "${image}" \
   /bin/sh -ec '
-    ansible-inventory -i agents/ansible/inventories/dev/linux/hosts.yml --graph
-    ansible-inventory -i agents/ansible/inventories/dev/windows/hosts.yml --graph
+    find agents/ansible/inventories -type f -name "*.yml" -print | sort | while read -r inventory; do
+      ansible-inventory -i "$inventory" --graph
+    done
     for playbook in agents/ansible/playbooks/*.yaml; do
       ansible-playbook --syntax-check "$playbook"
     done
+    if command -v ansible-lint >/dev/null 2>&1; then
+      ansible-lint agents/ansible
+    fi
   '

@@ -26,6 +26,7 @@ values에는 이미지/차트 버전, 복제본 수, 리소스 제한, StorageCl
 stg/prd Argo CD 수동 Sync 직전에는 반드시 아래 명령을 실행합니다. 이 검사는 Vault KMS·IRSA, Gateway 이름·listener·환경 DNS, 운영 외부 저장소/Kafka 계약이 렌더링 가능한지 확인합니다.
 
 ```bash
+make preflight-server ENV=dev OVERLAY=local/server/values.yaml
 make preflight-server ENV=stg
 make preflight-server ENV=prd
 ```
@@ -44,6 +45,6 @@ server/
 
 ## dev/Kind 검증 범위
 
-로컬 Kind는 `server/env/dev/values.yaml` 위에 `local/server/values.yaml`을 겹쳐 모든 서버 컴포넌트를 단일 복제본·비영속 스토리지로 기동합니다. local Git daemon의 `dev` 브랜치를 Argo CD source로 사용하므로 원격 push 없이도 수동 Sync를 검증할 수 있습니다.
+로컬 Kind는 `server/env/dev/values.yaml` 위에 `local/server/values.yaml`을 겹쳐 모든 서버 컴포넌트를 단일 복제본·비영속 스토리지로 기동합니다. 해당 runtime values의 추적 가능한 예시는 [../scripts/local/server/values.example.yaml](../scripts/local/server/values.example.yaml)에 있으며, local Git daemon의 `dev` 브랜치를 Argo CD source로 사용하므로 원격 push 없이도 수동 Sync를 검증할 수 있습니다.
 
-수집 endpoint는 `loki|mimir|tempo|pyroscope.ingest.localhost`이며, Gateway에서 mTLS와 HTTP Basic Auth를 동시에 검증합니다. Vault bootstrap 뒤에만 ExternalSecret, Gateway TLS, AWX용 PKI와 Alloy client certificate를 생성합니다. 자세한 실행 순서는 [../local/README.md](../local/README.md)를 참고하세요.
+수집 endpoint는 `loki|mimir|tempo|pyroscope.ingest.localhost`이며, Gateway에서 mTLS와 HTTP Basic Auth를 동시에 검증합니다. Vault bootstrap 뒤에만 ExternalSecret, Gateway TLS, AWX용 PKI와 Alloy client certificate를 생성합니다. 상태·UI API·AWX·언어별 telemetry 검증은 `make local-*` 명령으로 수행하며 자세한 실행 순서는 [../scripts/local/README.md](../scripts/local/README.md)를 참고하세요.
