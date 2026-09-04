@@ -29,6 +29,11 @@
                 secretName: "{{ alloy_ingest_secret_name }}"
       alloy:
         hostAliases: "{{ alloy_host_aliases }}"
+        # Secret volume 갱신만으로는 envFrom의 Basic Auth 값과 실행 중인
+        # Alloy 프로세스가 갱신되지 않는다. Vault PKI 인증서를 다시 발급할
+        # 때마다 resourceVersion을 Pod template에 반영해 안전하게 롤아웃한다.
+        podAnnotations:
+          monitoring-stack.io/ingest-secret-resource-version: "{{ alloy_ingest_secret_result.result.metadata.resourceVersion }}"
         extraEnv: "{{ alloy_environment | dict2items(key_name='name', value_name='value') }}"
         envFrom:
           - secretRef:
