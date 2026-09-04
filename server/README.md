@@ -41,7 +41,7 @@ server/
 └── values/        # 공통 및 차트별 values 조각
 ```
 
-컴포넌트를 추가하거나 배포 순서를 변경하기 전 [../IMPLEMENTATION_PLAN.md](../IMPLEMENTATION_PLAN.md)를 확인하세요.
+컴포넌트를 추가하거나 배포 순서를 변경하기 전 [../docs/IMPLEMENTATION_PLAN.md](../docs/IMPLEMENTATION_PLAN.md)를 확인하세요.
 
 ## dev/Kind 검증 범위
 
