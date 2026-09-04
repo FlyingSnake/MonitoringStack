@@ -8,8 +8,5 @@ for app in dotnet java go nodejs; do
 done
 
 kubectl -n alloy get daemonset/alloy -o jsonpath='{.status.numberReady}' | grep -qx 1
-for service in telemetry.go telemetry.java telemetry.nodejs; do
-  kubectl -n pyroscope logs statefulset/pyroscope --since=3m | grep -q "profile accepted.*service_name=${service}"
-done
 
-echo "Workload readiness, stdout logs, Alloy DaemonSet, and Go/Java/Node.js profile acceptance were observed. Run query.sh for Loki, Mimir, and Tempo queries."
+echo "Workload readiness, stdout logs, and Alloy DaemonSet were observed. query.sh verifies Loki, Mimir, Tempo, and Pyroscope API results."

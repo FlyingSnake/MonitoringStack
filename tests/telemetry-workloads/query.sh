@@ -44,6 +44,7 @@ gateway_query() {
 work_dir="$(mktemp -d)"
 cleanup() {
   [[ -n "${forward_pid:-}" ]] && kill "${forward_pid}" 2>/dev/null || true
+  [[ -n "${pyroscope_forward_pid:-}" ]] && kill "${pyroscope_forward_pid}" 2>/dev/null || true
   rm -rf "${work_dir}"
 }
 trap cleanup EXIT
@@ -108,8 +109,27 @@ for service_name in telemetry.dotnet telemetry.java telemetry.go telemetry.nodej
   ' "${tempo_result}" "${service_name}"
 done
 
-pyroscope_logs="$(kubectl -n pyroscope logs statefulset/pyroscope --since=3m)"
-for service_name in telemetry.java telemetry.go telemetry.nodejs; do
-  grep -q "profile accepted.*service_name=${service_name}" <<<"${pyroscope_logs}"
+pyroscope_port_log="${work_dir}/pyroscope-port-forward.log"
+kubectl -n pyroscope port-forward service/pyroscope 14040:4040 >"${pyroscope_port_log}" 2>&1 &
+pyroscope_forward_pid=$!
+for _ in $(seq 1 20); do
+  curl --silent --fail http://127.0.0.1:14040/ready >/dev/null 2>&1 && break
+  sleep 1
 done
-echo "Pyroscope Java/Go/Node.js profile acceptance observed (.NET profile is architecture-dependent)."
+
+now_millis="$(( $(date +%s) * 1000 ))"
+start_millis="$(( now_millis - 900000 ))"
+pyroscope_result="${work_dir}/pyroscope.json"
+curl --silent --show-error --fail -H 'Content-Type: application/json' \
+  --data "{\"matchers\":[],\"labelNames\":[\"service_name\",\"__profile_type__\"],\"start\":${start_millis},\"end\":${now_millis}}" \
+  http://127.0.0.1:14040/querier.v1.QuerierService/Series > "${pyroscope_result}"
+ruby -rjson -e '
+  data = JSON.parse(File.read(ARGV[0]))
+  profiles = data.fetch("labelsSet", [])
+  services = profiles.map do |profile|
+    profile.fetch("labels", []).find { |label| label["name"] == "service_name" }&.fetch("value", nil)
+  end.compact.uniq
+  missing = %w[telemetry.java telemetry.go telemetry.nodejs] - services
+  abort("Pyroscope profiles are missing for: #{missing.join(", ")}") unless missing.empty?
+  puts "Pyroscope profile services=#{services.sort.join(", ")} (.NET profile is architecture-dependent)."
+' "${pyroscope_result}"
