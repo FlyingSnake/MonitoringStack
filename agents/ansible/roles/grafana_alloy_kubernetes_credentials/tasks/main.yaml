@@ -66,4 +66,5 @@
         ca.crt: "{{ alloy_client_certificate.json.data.issuing_ca }}"
         tls.crt: "{{ alloy_client_certificate.json.data.certificate }}"
         tls.key: "{{ alloy_client_certificate.json.data.private_key }}"
+  register: alloy_ingest_secret_result
   no_log: true
