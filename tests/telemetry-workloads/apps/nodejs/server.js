@@ -2,10 +2,14 @@ const http = require('http');
 const { NodeSDK } = require('@opentelemetry/sdk-node');
 const { OTLPTraceExporter } = require('@opentelemetry/exporter-trace-otlp-http');
 const { trace } = require('@opentelemetry/api');
+const { resourceFromAttributes } = require('@opentelemetry/resources');
 const Pyroscope = require('@pyroscope/nodejs');
 
 const otlpEndpoint = `${process.env.OTEL_EXPORTER_OTLP_ENDPOINT}/v1/traces`;
-const sdk = new NodeSDK({ traceExporter: new OTLPTraceExporter({ url: otlpEndpoint }) });
+const sdk = new NodeSDK({
+  traceExporter: new OTLPTraceExporter({ url: otlpEndpoint }),
+  resource: resourceFromAttributes({ 'service.name': 'telemetry.nodejs' }),
+});
 sdk.start();
 Pyroscope.init({ serverAddress: process.env.PYROSCOPE_SERVER_ADDRESS, appName: process.env.PYROSCOPE_APPLICATION_NAME });
 Pyroscope.start();
