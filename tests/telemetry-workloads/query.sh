@@ -43,8 +43,14 @@ gateway_query() {
 
 work_dir="$(mktemp -d)"
 cleanup() {
-  [[ -n "${forward_pid:-}" ]] && kill "${forward_pid}" 2>/dev/null || true
-  [[ -n "${pyroscope_forward_pid:-}" ]] && kill "${pyroscope_forward_pid}" 2>/dev/null || true
+  if [[ -n "${forward_pid:-}" ]]; then
+    kill "${forward_pid}" 2>/dev/null || true
+    wait "${forward_pid}" 2>/dev/null || true
+  fi
+  if [[ -n "${pyroscope_forward_pid:-}" ]]; then
+    kill "${pyroscope_forward_pid}" 2>/dev/null || true
+    wait "${pyroscope_forward_pid}" 2>/dev/null || true
+  fi
   rm -rf "${work_dir}"
 }
 trap cleanup EXIT
