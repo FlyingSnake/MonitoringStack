@@ -21,8 +21,8 @@ Grafana OSS 기반 중앙 관측성 플랫폼과 Grafana Alloy 에이전트를 G
 - 서버: `server/env/<dev|stg|prd>/values.yaml`
 - 에이전트: `agents/env/<dev|stg|prd>/<linux|windows|k8s>/values.yaml`
 
-전체 아키텍처와 단계별 구현 순서는 [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md)를 참고하세요.
-환경별 배포 승격 규칙은 [BRANCH_STRATEGY.md](BRANCH_STRATEGY.md)를 참고하세요.
+전체 아키텍처와 단계별 구현 순서는 [docs/IMPLEMENTATION_PLAN.md](docs/IMPLEMENTATION_PLAN.md)를 참고하세요.
+환경별 배포 승격 규칙은 [docs/BRANCH_STRATEGY.md](docs/BRANCH_STRATEGY.md)를 참고하세요.
 
 ## 운영 원칙
 
@@ -42,6 +42,6 @@ Grafana OSS 기반 중앙 관측성 플랫폼과 Grafana Alloy 에이전트를 G
 - AWX는 Git 인벤토리와 Job Template로 Kubernetes·Linux·Windows Alloy 역할을 관리합니다. Linux와 Kubernetes는 Kind에서 Vault 단기 인증서와 수집 자격증명을 사용하는 흐름을 검증했습니다.
 - Kind 테스트 워크로드는 Java, Go, Node.js와 .NET의 로그·메트릭·트레이스를 검증합니다. Apple Silicon ARM64에서는 현재 Pyroscope .NET profiler wrapper가 없어 .NET 프로파일만 안전하게 비활성화됩니다.
 
-로컬 실행과 smoke test 절차는 [scripts/local/README.md](scripts/local/README.md), 실제 구현 상태와 남은 작업은 [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md)를 참고하세요.
+로컬 실행과 smoke test 절차는 [scripts/local/README.md](scripts/local/README.md), 실제 구현 상태와 남은 작업은 [docs/IMPLEMENTATION_PLAN.md](docs/IMPLEMENTATION_PLAN.md)를 참고하세요.
 
 Docker와 `monitoring-local` Kind가 준비된 경우 `make local-status`로 읽기 전용 상태를 먼저 확인하고, `make local-ui-api-smoke`, `make local-k8s-alloy-smoke`, `make local-linux-alloy-smoke`, `make local-telemetry-smoke` 순서로 반복 검증합니다. smoke는 클러스터를 새로 만들지 않으며, 준비되지 않은 경우 필요한 bootstrap 명령을 안내하고 종료합니다.

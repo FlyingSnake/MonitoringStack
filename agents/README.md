@@ -38,4 +38,4 @@ Alloy의 외부 수집 주소는 UI 주소가 아닌 `*.ingest.<environment>.<ba
 
 Kubernetes와 Linux의 실제 Kind 검증은 `make local-k8s-alloy-smoke`, `make local-linux-alloy-smoke`으로 반복 실행합니다. Windows는 역할·인벤토리·Job Template의 정적 검증만 완료했으며 WinRM 대상이 준비된 뒤 실제 배포를 검증합니다. `make ansible-check-container`는 모든 환경·대상 inventory와 playbook의 정적 검증을 수행합니다.
 
-엔드포인트, 보안, 배포 세부 사항은 [../IMPLEMENTATION_PLAN.md](../IMPLEMENTATION_PLAN.md)를 참고하세요.
+엔드포인트, 보안, 배포 세부 사항은 [../docs/IMPLEMENTATION_PLAN.md](../docs/IMPLEMENTATION_PLAN.md)를 참고하세요.

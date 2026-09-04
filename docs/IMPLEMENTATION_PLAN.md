@@ -86,7 +86,8 @@
 ```text
 .
 ├── README.md
-├── IMPLEMENTATION_PLAN.md
+├── docs/
+│   └── IMPLEMENTATION_PLAN.md
 ├── bootstrap/
 │   ├── argocd/                         # Argo CD Helm values 및 최초 설치 스크립트
 │   └── root-application.yaml           # bootstrap 직후 한 번 적용하는 root Application
