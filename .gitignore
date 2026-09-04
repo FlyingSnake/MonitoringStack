@@ -36,6 +36,9 @@ rendered/
 tmp/
 .tmp/
 local/
+# 재현 가능한 검증 스크립트는 추적하고, 런타임 상태만 local/에 둔다.
+!scripts/local/
+!scripts/local/**
 
 # Test, coverage, and logs
 .pytest_cache/

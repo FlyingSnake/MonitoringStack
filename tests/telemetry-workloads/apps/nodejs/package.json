@@ -1,0 +1,11 @@
+{
+  "name": "monitoring-stack-nodejs-telemetry",
+  "version": "0.1.0",
+  "private": true,
+  "dependencies": {
+    "@opentelemetry/api": "1.9.0",
+    "@opentelemetry/exporter-trace-otlp-http": "0.222.0",
+    "@opentelemetry/sdk-node": "0.222.0",
+    "@pyroscope/nodejs": "0.6.3"
+  }
+}

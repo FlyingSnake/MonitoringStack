@@ -1,69 +1,87 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-environment="${1:?usage: scripts/preflight-server-env.sh <stg|prd>}"
+environment="${1:?usage: scripts/preflight-server-env.sh <dev|stg|prd> [overlay-values.yaml]}"
+overlay_file="${2:-}"
 values_file="server/env/${environment}/values.yaml"
 
-if [[ "${environment}" != "stg" && "${environment}" != "prd" ]]; then
-  echo "Only stg and prd require the production contract preflight." >&2
-  exit 2
-fi
-
-if rg --quiet 'REQUIRED_[A-Z0-9_]+' "${values_file}"; then
-  echo "${environment} values still contain REQUIRED_* placeholders. Refusing deployment." >&2
-  rg -n 'REQUIRED_[A-Z0-9_]+' "${values_file}" >&2
-  exit 1
-fi
-
-if rg --quiet 'example\.internal' "${values_file}"; then
-  echo "${environment} values still contain the example.internal domain. Refusing deployment." >&2
-  rg -n 'example\.internal' "${values_file}" >&2
+case "${environment}" in
+  dev|stg|prd) ;;
+  *) echo "environment must be dev, stg, or prd" >&2; exit 2 ;;
+esac
+[[ -f "${values_file}" ]] || { echo "Missing values file: ${values_file}" >&2; exit 1; }
+if [[ -n "${overlay_file}" && ! -f "${overlay_file}" ]]; then
+  echo "Overlay values file does not exist: ${overlay_file}" >&2
   exit 1
 fi
 
 rendered_file="$(mktemp)"
-helm template "monitoring-platform-${environment}" server/charts/platform-apps \
-  -f server/values/common.yaml \
-  -f "${values_file}" > "${rendered_file}"
+trap 'rm -f "${rendered_file}"' EXIT
+helm_args=(template "monitoring-platform-${environment}" server/charts/platform-apps -f server/values/common.yaml -f "${values_file}")
+[[ -n "${overlay_file}" ]] && helm_args+=(-f "${overlay_file}")
+helm "${helm_args[@]}" > "${rendered_file}"
 
 ruby -ryaml -e '
-  environment, values_path, rendered_path = ARGV
-  values = YAML.load_file(values_path)
-  base_domain = values.fetch("baseDomain")
-  abort("baseDomain must be a concrete non-example domain") if base_domain.empty? || base_domain == "example.internal"
-
+  environment, values_path, overlay_path, rendered_path = ARGV
   applications = YAML.load_stream(File.read(rendered_path)).compact
   find_application = lambda do |name|
     application = applications.find { |item| item.dig("kind") == "Application" && item.dig("metadata", "name") == name }
     abort("Missing Application: #{name}") unless application
     application
   end
-  application_values = lambda do |name|
-    find_application.call(name).dig("spec", "source", "helm", "valuesObject") || {}
+  application_values = lambda { |name| find_application.call(name).dig("spec", "source", "helm", "valuesObject") || {} }
+  reject_placeholders = lambda do |value, context|
+    serialized = YAML.dump(value)
+    abort("#{context} contains REQUIRED_* placeholder") if serialized.match?(/REQUIRED_[A-Z0-9_]+/)
+    abort("#{context} contains example.internal") if serialized.include?("example.internal")
+  end
+
+  applications.each { |application| reject_placeholders.call(application, "rendered #{application.dig("metadata", "name")}") }
+
+  gateway = application_values.call("platform-gateway").fetch("gateway")
+  %w[name namespace uiListener ingestListener].each { |key| abort("Gateway #{key} is required") if gateway[key].to_s.empty? }
+  tls = gateway.fetch("tls")
+  hosts = tls.fetch("uiDnsNames") + tls.fetch("ingestDnsNames")
+  abort("Gateway TLS names are required") if hosts.empty? || hosts.uniq.length != hosts.length
+  local_overlay = hosts.all? { |host| host.end_with?(".localhost") }
+  if local_overlay
+    abort("Local UI hosts must use .ui.localhost") unless tls.fetch("uiDnsNames").all? { |host| host.end_with?(".ui.localhost") }
+    abort("Local ingest hosts must use .ingest.localhost") unless tls.fetch("ingestDnsNames").all? { |host| host.end_with?(".ingest.localhost") }
+  else
+    expected_fragment = ".#{environment}."
+    abort("Gateway DNS names do not match #{environment} environment") unless hosts.all? { |host| host.include?(expected_fragment) }
   end
 
   vault = application_values.call("vault")
   vault_config = vault.dig("server", "ha", "raft", "config").to_s
-  abort("Vault AWS KMS auto-unseal configuration is required") unless vault_config.include?("seal \"awskms\"")
-  irsa_role = vault.dig("server", "serviceAccount", "annotations", "eks.amazonaws.com/role-arn").to_s
-  abort("Vault IRSA role ARN is required") if irsa_role.empty?
-
-  gateway = application_values.call("platform-gateway").fetch("gateway")
-  %w[name namespace uiListener ingestListener].each do |key|
-    abort("Gateway #{key} is required") if gateway[key].to_s.empty?
+  if environment == "dev"
+    abort("dev Vault must not use AWS KMS auto-unseal") if vault_config.include?("seal \"awskms\"")
+  else
+    abort("Vault AWS KMS auto-unseal configuration is required") unless vault_config.include?("seal \"awskms\"")
+    irsa_role = vault.dig("server", "serviceAccount", "annotations", "eks.amazonaws.com/role-arn").to_s
+    abort("Vault IRSA role ARN is required") if irsa_role.empty?
   end
-  expected_suffix = ".#{environment}.#{base_domain}"
-  hosts = (gateway.fetch("tls").fetch("uiDnsNames") + gateway.fetch("tls").fetch("ingestDnsNames"))
-  abort("Gateway DNS names do not match #{expected_suffix}") unless hosts.all? { |host| host.end_with?(expected_suffix) }
 
   if environment == "prd"
-    %w[loki mimir tempo pyroscope].each do |name|
-      application_values.call(name)
-    end
     %w[minio redpanda].each do |name|
       abort("#{name} must not be deployed in prd") if applications.any? { |item| item.dig("kind") == "Application" && item.dig("metadata", "name") == name }
     end
+    prd_serialized = %w[loki mimir tempo pyroscope].map { |name| YAML.dump(application_values.call(name)) }.join
+    abort("prd requires concrete external S3 and Kafka values") if prd_serialized.match?(/REQUIRED_(S3_ENDPOINT|KAFKA_BROKER)/)
+  else
+    %w[minio redpanda].each { |name| find_application.call(name) }
   end
- ' "${environment}" "${values_file}" "${rendered_file}"
 
-echo "${environment} server values preflight passed."
+  unless local_overlay
+    expected_revision = { "dev" => "dev", "stg" => "stg", "prd" => "main" }.fetch(environment)
+    %w[linux windows k8s].each do |target|
+      agent = YAML.load_file("agents/env/#{environment}/#{target}/values.yaml")
+      abort("#{target} agent revision must be #{expected_revision}") unless agent.dig("alloy", "config", "revision") == expected_revision
+      agent.fetch("endpoints").each_value do |url|
+        abort("#{target} agent endpoint does not match environment domain: #{url}") unless url.include?(".#{environment}.")
+      end
+    end
+  end
+' "${environment}" "${values_file}" "${overlay_file}" "${rendered_file}"
+
+echo "${environment} server and agent contract preflight passed."

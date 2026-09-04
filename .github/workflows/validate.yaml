@@ -24,3 +24,5 @@ jobs:
           ansible-galaxy collection install -r agents/ansible/collections/requirements.yaml
       - name: Validate GitOps configuration
         run: make validate
+      - name: Lint Ansible roles and playbooks
+        run: ansible-lint agents/ansible

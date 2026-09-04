@@ -7,6 +7,7 @@
 | 영역 | 구현·검증 상태 |
 | --- | --- |
 | GitOps 기반 | Argo CD bootstrap, AppProject, 환경별 `targetRevision`, local Git daemon 기반 Kind 소스 검증 완료 |
+| 재현 가능한 로컬 검증 | Kind·Gateway·Vault·AWX fixture는 `scripts/local/`, 언어별 워크로드는 `tests/telemetry-workloads/`로 Git 추적. 개인별 values·인증서·키·bare Git 상태는 `local/`에만 보관 |
 | 보안·인증 | Vault, External Secrets, Vault PKI, Gateway UI/수집 listener, 수집 mTLS + HTTP Basic Auth 구현 및 로컬 회귀 검증 완료 |
 | 인증·UI | Keycloak realm/client 선언, Grafana·Argo CD·AWX OIDC 설정 선언 및 Grafana datasource CR 등록 완료 |
 | 저장소·큐 | dev MinIO와 Redpanda, Loki/Mimir/Tempo/Pyroscope의 S3·Kafka 연결 구현 완료 |
@@ -15,6 +16,7 @@
 | Linux Alloy | AWX → SSH fixture → Vault PKI → systemd Alloy 배포와 로그·메트릭·트레이스·프로파일 전송 검증 완료 |
 | Windows Alloy | 인벤토리·Job Template·Ansible 역할·Vault credential 계약 구현 및 정적 검증 완료. 실제 WinRM 대상 검증 대기 |
 | .NET 워크로드 | 멀티 아키텍처 초기화와 ARM64 graceful fallback 구현. ARM64 Kind에서 로그·메트릭·트레이스 검증 완료, 프로파일은 wrapper 제공 전까지 보류 |
+| 환경 사전검사 | `make preflight-server ENV=<dev|stg|prd> [OVERLAY=...]`로 Gateway·Vault·S3·Kafka·agent revision 계약을 렌더링 검증. 미치환 `REQUIRED_*`와 `example.internal`은 Sync 전에 거부 |
 
 ### 현재 후속 작업
 

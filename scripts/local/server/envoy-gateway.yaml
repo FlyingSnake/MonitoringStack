@@ -1,0 +1,74 @@
+apiVersion: gateway.networking.k8s.io/v1
+kind: GatewayClass
+metadata:
+  name: monitoring-local
+spec:
+  controllerName: gateway.envoyproxy.io/gatewayclass-controller
+---
+apiVersion: gateway.envoyproxy.io/v1alpha1
+kind: EnvoyProxy
+metadata:
+  name: monitoring-local
+  namespace: envoy-gateway-system
+spec:
+  provider:
+    type: Kubernetes
+    kubernetes:
+      envoyService:
+        type: NodePort
+        externalTrafficPolicy: Cluster
+        patch:
+          type: StrategicMerge
+          value:
+            spec:
+              ports:
+                - name: http
+                  port: 80
+                  nodePort: 30080
+                - name: https
+                  port: 443
+                  nodePort: 30443
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: Gateway
+metadata:
+  name: monitoring-local
+  namespace: envoy-gateway-system
+spec:
+  gatewayClassName: monitoring-local
+  infrastructure:
+    parametersRef:
+      group: gateway.envoyproxy.io
+      kind: EnvoyProxy
+      name: monitoring-local
+  listeners:
+    - name: http
+      protocol: HTTP
+      port: 80
+      allowedRoutes:
+        namespaces:
+          from: All
+    - name: ui-https
+      protocol: HTTPS
+      port: 443
+      hostname: "*.ui.localhost"
+      tls:
+        mode: Terminate
+        certificateRefs:
+          - kind: Secret
+            name: monitoring-ui-tls
+      allowedRoutes:
+        namespaces:
+          from: All
+    - name: ingest-https
+      protocol: HTTPS
+      port: 443
+      hostname: "*.ingest.localhost"
+      tls:
+        mode: Terminate
+        certificateRefs:
+          - kind: Secret
+            name: monitoring-ingest-tls
+      allowedRoutes:
+        namespaces:
+          from: All

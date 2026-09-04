@@ -1,0 +1,15 @@
+ARG AWX_EE_IMAGE=quay.io/ansible/awx-ee:24.6.1
+ARG HELM_VERSION=3.16.3
+
+FROM alpine:3.20 AS helm
+ARG HELM_VERSION
+ARG TARGETARCH
+RUN apk add --no-cache curl tar \
+  && curl --fail --location --silent --show-error \
+    "https://get.helm.sh/helm-v${HELM_VERSION}-linux-${TARGETARCH}.tar.gz" \
+    | tar -xz --strip-components=1 -C /usr/local/bin "linux-${TARGETARCH}/helm"
+
+FROM ${AWX_EE_IMAGE}
+USER root
+COPY --from=helm /usr/local/bin/helm /usr/local/bin/helm
+USER 1000

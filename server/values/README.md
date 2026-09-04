@@ -4,7 +4,7 @@
 
 Keycloak과 MinIO의 Bitnami 기반 이미지는 제거된 기존 `bitnami/*` 태그 대신, 동일한 불변 태그를 보관하는 `bitnamilegacy/*` repository를 명시합니다. 차트나 이미지를 올릴 때는 Helm chart 버전과 이미지 태그를 함께 검증합니다.
 
-`dev`는 단일 Raft Vault를 운영자가 초기화·Unseal합니다. `stg`, `prd`는 EKS IRSA와 AWS KMS Auto-Unseal을 사용하며, `REQUIRED_*` 값은 실제 인프라 값으로 교체하기 전에는 배포하지 않습니다.
+`dev`는 단일 Raft Vault를 운영자가 초기화·Unseal합니다. `stg`, `prd`는 EKS IRSA와 AWS KMS Auto-Unseal을 사용하며, `REQUIRED_*` 값은 실제 인프라 값으로 교체하기 전에는 배포하지 않습니다. Sync 전에는 `make preflight-server ENV=<dev|stg|prd> [OVERLAY=path/to/values.yaml]`을 실행합니다.
 
 ## Mimir·Tempo 서버 namespace 및 Kafka
 

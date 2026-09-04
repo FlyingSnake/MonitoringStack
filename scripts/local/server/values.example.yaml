@@ -1,0 +1,155 @@
+# 이 파일을 local/server/values.yaml로 복사한 뒤, Docker/Kind 네트워크와
+# 실제 Gateway Service ClusterIP에 맞춰 API CIDR 및 hostAliases를 조정한다.
+# 비밀값은 넣지 않으며 Vault bootstrap이 런타임에 생성한다.
++gitRevision: dev
+repository:
+  url: git://host.docker.internal:9418/MonitoringStack.git
+project:
+  sourceRepos:
+    - git://host.docker.internal:9418/MonitoringStack.git
+    - https://argoproj.github.io/argo-helm
+    - https://helm.releases.hashicorp.com
+    - https://charts.jetstack.io
+    - https://charts.external-secrets.io
+    - https://charts.bitnami.com/bitnami
+    - https://grafana-community.github.io/helm-charts
+    - https://grafana.github.io/helm-charts
+    - https://prometheus-community.github.io/helm-charts
+    - https://charts.redpanda.com
+    - https://ansible-community.github.io/awx-operator-helm
+applications:
+  vault:
+    values:
+      server:
+        standalone:
+          enabled: true
+          config: |
+            ui = true
+            listener "tcp" {
+              tls_disable = 1
+              address = "[::]:8200"
+              cluster_address = "[::]:8201"
+            }
+            storage "file" {
+              path = "/tmp/vault"
+            }
+        dataStorage: { enabled: false }
+        auditStorage: { enabled: false }
+  platform-foundation:
+    values:
+      gatewayNamespace: envoy-gateway-system
+      # Kind CNI는 Service DNAT 후 Envoy의 HTTPS listener containerPort(10443)를
+      # NetworkPolicy와 대조하므로 Service port와 함께 허용한다.
+      gatewayEgressPorts: [443, 10443]
+      # Kind에서 Service VIP가 control-plane endpoint로 DNAT되므로 두 주소를
+      # 함께 허용한다. 실제 환경은 API Service/endpoint CIDR을 values로 제공한다.
+      apiServerCidrs: [10.96.0.1/32, 172.18.0.2/32]
+      externalEgress:
+        - name: awx-local-git
+          namespace: awx
+          podSelector: { matchLabels: { app.kubernetes.io/name: monitoring-awx-task } }
+          cidrs: [192.168.65.254/32]
+          ports: [{ protocol: TCP, port: 9418 }]
+        - name: awx-execution-helm-https
+          namespace: awx
+          podSelector:
+            matchExpressions:
+              - key: ansible-awx
+                operator: Exists
+          cidrs: [0.0.0.0/0]
+          ports: [{ protocol: TCP, port: 443 }]
+        - name: awx-linux-fixture-ssh
+          namespace: awx
+          podSelector:
+            matchExpressions:
+              - key: ansible-awx
+                operator: Exists
+          cidrs: [192.168.65.254/32]
+          ports: [{ protocol: TCP, port: 2222 }]
+        - name: alloy-local-git
+          namespace: alloy
+          podSelector: {}
+          cidrs: [192.168.65.254/32]
+          ports: [{ protocol: TCP, port: 9418 }]
+      admissionWebhooks:
+        - name: allow-kubernetes-api-to-mimir-rollout
+          namespace: monitoring-stack-server
+          podSelector: { app.kubernetes.io/instance: mimir, app.kubernetes.io/name: rollout-operator }
+          apiServerCidrs: [172.18.0.2/32]
+          port: 8443
+  platform-secrets:
+    values:
+      vault: { server: http://vault.vault.svc.cluster.local:8200 }
+      gatewaySecretNamespace: envoy-gateway-system
+  keycloak:
+    values:
+      postgresql:
+        primary: { persistence: { enabled: false } }
+  platform-identity:
+    values:
+      keycloak:
+        hosts: { argocd: "https://argocd.ui.localhost", grafana: "https://grafana.ui.localhost", awx: "https://awx.ui.localhost" }
+  minio:
+    values:
+      persistence: { enabled: false }
+  redpanda:
+    values:
+      storage: { persistentVolume: { enabled: false } }
+  platform-observability:
+    values:
+      grafana: { rootUrl: "https://grafana.ui.localhost", keycloakUrl: "https://keycloak.ui.localhost", replicas: 1 }
+  platform-gateway:
+    values:
+      gateway:
+        name: monitoring-local
+        namespace: envoy-gateway-system
+        httpListener: http
+        uiListener: ui-https
+        ingestListener: ingest-https
+        uiHttpRedirect: { enabled: true, statusCode: 301 }
+        vault: { server: "http://vault.vault.svc.cluster.local:8200", signPath: pki_int/sign/monitoring-server, kubernetesAuthMount: /v1/auth/kubernetes, issuerRole: cert-manager-issuer }
+        tls:
+          uiDnsNames: [grafana.ui.localhost, argocd.ui.localhost, keycloak.ui.localhost, awx.ui.localhost]
+          ingestDnsNames: [loki.ingest.localhost, mimir.ingest.localhost, tempo.ingest.localhost, pyroscope.ingest.localhost]
+        uiRoutes:
+          - { name: grafana, namespace: grafana, hostname: grafana.ui.localhost, service: grafana-service, port: 3000 }
+          - { name: keycloak, namespace: keycloak, hostname: keycloak.ui.localhost, service: keycloak, port: 80 }
+          - { name: argocd, namespace: argocd, hostname: argocd.ui.localhost, service: argocd-server, port: 80 }
+          - { name: awx, namespace: awx, hostname: awx.ui.localhost, service: monitoring-awx-service, port: 80 }
+        ingestionRoutes:
+          - { name: loki-ingest, namespace: loki, hostname: loki.ingest.localhost, service: loki-gateway, port: 80, basicAuthSecret: ingestion-basic-auth }
+          - { name: mimir-ingest, namespace: monitoring-stack-server, hostname: mimir.ingest.localhost, service: mimir-gateway, port: 80, basicAuthSecret: ingestion-basic-auth }
+          - { name: tempo-ingest, namespace: monitoring-stack-server, hostname: tempo.ingest.localhost, service: tempo-distributor, port: 4318, basicAuthSecret: ingestion-basic-auth }
+          - { name: pyroscope-ingest, namespace: pyroscope, hostname: pyroscope.ingest.localhost, service: pyroscope, port: 4040, basicAuthSecret: ingestion-basic-auth }
+  awx-resources:
+    values:
+      awx: { projectsPersistence: false, projectsStorageSize: 1Gi, postgresStorageSize: 1Gi }
+  awx-config:
+    values:
+      awx:
+        image: monitoring-stack-awx-ee:0.1.1
+        repository: git://host.docker.internal:9418/MonitoringStack.git
+        revision: dev
+        linuxTest:
+          enabled: true
+          host: host.docker.internal
+          port: 2222
+          username: alloytest
+          credentialSecret: monitoring-linux-test-ssh
+        alloyEnvironment:
+          LOKI_URL: https://loki.ingest.localhost/loki/api/v1/push
+          MIMIR_REMOTE_WRITE_URL: https://mimir.ingest.localhost/api/v1/push
+          MONITORING_CLUSTER: local-kind
+          MONITORING_ENVIRONMENT: dev
+          PYROSCOPE_URL: https://pyroscope.ingest.localhost
+          TEMPO_OTLP_HTTP_ENDPOINT: https://tempo.ingest.localhost
+          ALLOY_TLS_CA_FILE: /etc/alloy/credentials/ca.crt
+          ALLOY_TLS_CERT_FILE: /etc/alloy/credentials/tls.crt
+          ALLOY_TLS_KEY_FILE: /etc/alloy/credentials/tls.key
+        alloyHostAliases:
+          - ip: 10.96.190.65
+            hostnames:
+              - loki.ingest.localhost
+              - mimir.ingest.localhost
+              - tempo.ingest.localhost
+              - pyroscope.ingest.localhost

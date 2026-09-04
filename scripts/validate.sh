@@ -102,9 +102,17 @@ ansible_check() {
     return 0
   fi
 
+  while IFS= read -r inventory; do
+    ansible-inventory -i "${inventory}" --graph >/dev/null
+  done < <(find agents/ansible/inventories -type f -name '*.yml' | sort)
+
   for playbook in agents/ansible/playbooks/*.yaml; do
     ansible-playbook --syntax-check "${playbook}"
   done
+
+  if command -v ansible-lint >/dev/null 2>&1; then
+    ansible-lint agents/ansible
+  fi
 }
 
 case "${mode}" in
