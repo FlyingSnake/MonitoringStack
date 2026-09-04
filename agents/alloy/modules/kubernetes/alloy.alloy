@@ -46,6 +46,12 @@ declare "pipeline" {
       replacement   = "$1:$2"
       target_label  = "__address__"
     }
+    rule {
+      source_labels = ["__meta_kubernetes_pod_label_app"]
+      regex         = "(.+)-telemetry"
+      replacement   = "$1"
+      target_label  = "language"
+    }
   }
 
   loki.source.kubernetes "pods" {
