@@ -136,8 +136,62 @@ data:
               alloy_config_repository: {{ .Values.awx.repository | quote }}
               alloy_config_revision: {{ .Values.awx.revision | quote }}
               alloy_environment:
-{{ toYaml .Values.awx.alloyEnvironment | nindent 16 }}
+{{ toYaml .Values.awx.alloyWindowsEnvironment | nindent 16 }}
             state: present
+{{- if .Values.awx.windowsCredential.enabled }}
+        - name: Windows WinRM 사용자명 Secret 존재 여부 확인
+          ansible.builtin.stat:
+            path: /windows-credentials/{{ .Values.awx.windowsCredential.usernameKey }}
+          register: monitoring_windows_winrm_username
+          no_log: true
+        - name: Windows WinRM 비밀번호 Secret 존재 여부 확인
+          ansible.builtin.stat:
+            path: /windows-credentials/{{ .Values.awx.windowsCredential.passwordKey }}
+          register: monitoring_windows_winrm_password
+          no_log: true
+        - name: Windows WinRM Secret이 준비되지 않은 경우 안내
+          ansible.builtin.debug:
+            msg: Windows WinRM credential is unavailable; the Windows Job Template will remain without a machine credential until a later AWX config sync.
+          when: >-
+            not monitoring_windows_winrm_username.stat.exists or
+            not monitoring_windows_winrm_password.stat.exists
+        - name: Windows WinRM Machine Credential 동기화
+          awx.awx.credential:
+            name: {{ .Values.awx.windowsCredential.credentialName | quote }}
+            organization: MonitoringStack
+            credential_type: Machine
+            inputs:
+              username: "{{ "{{ lookup('file', '/windows-credentials/" }}{{ .Values.awx.windowsCredential.usernameKey }}{{ "') }}" }}"
+              password: "{{ "{{ lookup('file', '/windows-credentials/" }}{{ .Values.awx.windowsCredential.passwordKey }}{{ "') }}" }}"
+            state: present
+          no_log: true
+          when:
+            - monitoring_windows_winrm_username.stat.exists
+            - monitoring_windows_winrm_password.stat.exists
+        - name: Windows Job Template에 WinRM Machine Credential 연결
+          awx.awx.job_template:
+            name: "Install Alloy - dev Windows"
+            organization: MonitoringStack
+            inventory: MonitoringStack Dev Windows Inventory
+            project: MonitoringStack Agents
+            playbook: agents/ansible/playbooks/install-alloy-windows.yaml
+            execution_environment: MonitoringStack AWX EE
+            credentials: [{{ .Values.awx.windowsCredential.credentialName | quote }}]
+            extra_vars:
+              monitoring_environment: dev
+              vault_addr: {{ .Values.awx.vault.server | quote }}
+              vault_kubernetes_role: {{ .Values.awx.vault.role | quote }}
+              vault_pki_issue_path: {{ .Values.awx.vault.pkiPath | quote }}
+              vault_ingestion_path: {{ .Values.awx.vault.ingestionPath | quote }}
+              alloy_config_repository: {{ .Values.awx.repository | quote }}
+              alloy_config_revision: {{ .Values.awx.revision | quote }}
+              alloy_environment:
+{{ toYaml .Values.awx.alloyWindowsEnvironment | nindent 16 }}
+            state: present
+          when:
+            - monitoring_windows_winrm_username.stat.exists
+            - monitoring_windows_winrm_password.stat.exists
+{{- end }}
 {{- if .Values.awx.linuxTest.enabled }}
         - name: 로컬 Linux fixture SSH 키 존재 여부 확인
           ansible.builtin.stat:
@@ -236,6 +290,11 @@ spec:
               mountPath: /credentials
               readOnly: true
 {{- end }}
+{{- if .Values.awx.windowsCredential.enabled }}
+            - name: windows-credentials
+              mountPath: /windows-credentials
+              readOnly: true
+{{- end }}
       volumes:
         - name: config
           configMap:
@@ -244,6 +303,12 @@ spec:
         - name: linux-test-ssh
           secret:
             secretName: {{ .Values.awx.linuxTest.credentialSecret }}
+            optional: true
+{{- end }}
+{{- if .Values.awx.windowsCredential.enabled }}
+        - name: windows-credentials
+          secret:
+            secretName: {{ .Values.awx.windowsCredential.credentialSecret }}
             optional: true
 {{- end }}
 {{- end }}

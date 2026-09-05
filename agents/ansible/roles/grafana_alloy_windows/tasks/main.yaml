@@ -30,7 +30,20 @@
   ansible.windows.win_package:
     path: "{{ alloy_installer_url }}"
     arguments: /S
+    checksum: "{{ alloy_installer_checksum | default(omit, true) }}"
+    expected_return_code: [0, 3010]
     state: present
+
+- name: Alloy을 위한 지원 Windows 플랫폼 확인
+  ansible.windows.win_powershell:
+    script: |
+      if (-not [Environment]::Is64BitOperatingSystem) {
+        throw 'Grafana Alloy Windows installer requires a 64-bit Windows operating system.'
+      }
+      if ($PSVersionTable.PSVersion.Major -lt 5) {
+        throw 'Grafana Alloy automation requires PowerShell 5 or later.'
+      }
+  changed_when: false
 
 - name: Alloy bootstrap 구성 배포
   ansible.windows.win_template:

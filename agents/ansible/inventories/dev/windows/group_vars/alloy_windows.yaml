@@ -1,0 +1,10 @@
+---
+# WinRM 대상별 사용자명/비밀번호와 CA 경로는 AWX Credential 또는 host_vars로만
+# 주입한다. 검증되지 않은 인증서 우회는 허용하지 않는다.
+ansible_connection: winrm
+ansible_port: 5986
+ansible_winrm_scheme: https
+ansible_winrm_transport: ntlm
+ansible_winrm_server_cert_validation: validate
+ansible_winrm_operation_timeout_sec: 60
+ansible_winrm_read_timeout_sec: 70
