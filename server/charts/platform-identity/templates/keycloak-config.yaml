@@ -45,6 +45,20 @@ data:
           ]
         }
       ],
+      {{- if .Values.keycloak.bootstrapUser.enabled }}
+      "users": [
+        {
+          "username": "${MONITORING_BOOTSTRAP_USERNAME}",
+          "enabled": true,
+          "emailVerified": true,
+          "groups": ["platform-admin"],
+          "realmRoles": ["platform-admin"],
+          "credentials": [
+            {"type": "password", "value": "${MONITORING_BOOTSTRAP_PASSWORD}", "temporary": false}
+          ]
+        }
+      ],
+      {{- end }}
       "clients": [
         {
           "clientId": "argocd",
@@ -114,6 +128,14 @@ spec:
             - name: AWX_CLIENT_SECRET
               valueFrom:
                 secretKeyRef: { name: {{ .Values.keycloak.oidcSecret }}, key: awx-client-secret }
+            {{- if .Values.keycloak.bootstrapUser.enabled }}
+            - name: MONITORING_BOOTSTRAP_USERNAME
+              valueFrom:
+                secretKeyRef: { name: {{ .Values.keycloak.bootstrapUser.secret }}, key: {{ .Values.keycloak.bootstrapUser.usernameKey }} }
+            - name: MONITORING_BOOTSTRAP_PASSWORD
+              valueFrom:
+                secretKeyRef: { name: {{ .Values.keycloak.bootstrapUser.secret }}, key: {{ .Values.keycloak.bootstrapUser.passwordKey }} }
+            {{- end }}
           volumeMounts:
             - name: realm
               mountPath: /config

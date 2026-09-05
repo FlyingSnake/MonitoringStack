@@ -10,6 +10,12 @@
 
 로컬 데모는 인증서의 `*.demo.flyingsnake.xyz` SAN에 맞춰 `grafana`, `argocd`, `keycloak`, `awx`, `loki-ingest`, `mimir-ingest`, `tempo-ingest`, `pyroscope-ingest` 호스트를 사용한다. Gateway를 통해 127.0.0.1로 검증할 때도 curl의 `--resolve`가 인증서 hostname을 유지한다.
 
+로컬 values에서만 `monitoring` realm의 초기 `platform-admin` 사용자를 활성화한다. 사용자명과 비밀번호는 Vault → ExternalSecret → `keycloak/keycloak-bootstrap-user` Secret 흐름으로 주입되며 Git에는 저장하지 않는다. 비밀번호는 필요할 때만 다음 명령으로 로컬 클러스터에서 확인한다.
+
+```bash
+kubectl -n keycloak get secret keycloak-bootstrap-user -o jsonpath='{.data.password}' | base64 -d; echo
+```
+
 ## 검증 명령
 
 ```bash
