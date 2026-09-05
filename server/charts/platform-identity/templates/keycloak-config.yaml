@@ -51,10 +51,13 @@ data:
           "username": "$(env:MONITORING_BOOTSTRAP_USERNAME)",
           "enabled": true,
           "emailVerified": true,
+          "firstName": "Monitoring",
+          "lastName": "Administrator",
+          "email": "platform-admin@local.invalid",
           "groups": ["platform-admin"],
           "realmRoles": ["platform-admin"],
           "credentials": [
-            {"type": "password", "value": "$(env:MONITORING_BOOTSTRAP_PASSWORD)", "temporary": false}
+            {"type": "password", "userLabel": "initial", "value": "$(env:MONITORING_BOOTSTRAP_PASSWORD)", "temporary": false}
           ]
         }
       ],
