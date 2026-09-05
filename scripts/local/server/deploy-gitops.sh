@@ -24,6 +24,11 @@ helm upgrade --install argocd argo/argo-cd \
 
 kubectl -n argocd rollout status deployment/argocd-server --timeout=5m
 
+# install-gateway.sh의 초기 연결 확인용 echo Route는 Grafana의 HTTP→HTTPS
+# redirect와 동일한 host/path를 사용한다. GitOps HTTPRoute보다 우선되지 않게
+# App-of-Apps 적용 전에 제거한다.
+kubectl -n envoy-gateway-system delete httproute gateway-echo --ignore-not-found >/dev/null
+
 helm template monitoring-platform-local "${repo_root}/server/charts/platform-apps" \
   --values "${repo_root}/server/values/common.yaml" \
   --values "${repo_root}/server/env/dev/values.yaml" \
