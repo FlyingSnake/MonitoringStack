@@ -45,7 +45,7 @@ spec:
   parentRefs:
     - name: monitoring-local
   hostnames:
-    - echo.ui.localhost
+    - grafana.demo.flyingsnake.xyz
   rules:
     - backendRefs:
         - name: gateway-echo

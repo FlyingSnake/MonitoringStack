@@ -26,10 +26,10 @@ else
     --publish 2222:22 \
     --tmpfs /run --tmpfs /run/lock \
     --add-host host.docker.internal:host-gateway \
-    --add-host loki.ingest.localhost:host-gateway \
-    --add-host mimir.ingest.localhost:host-gateway \
-    --add-host tempo.ingest.localhost:host-gateway \
-    --add-host pyroscope.ingest.localhost:host-gateway \
+    --add-host loki-ingest.demo.flyingsnake.xyz:host-gateway \
+    --add-host mimir-ingest.demo.flyingsnake.xyz:host-gateway \
+    --add-host tempo-ingest.demo.flyingsnake.xyz:host-gateway \
+    --add-host pyroscope-ingest.demo.flyingsnake.xyz:host-gateway \
     --volume "${public_key}:/run/fixture/authorized_keys:ro" \
     "${image_name}" >/dev/null
 fi

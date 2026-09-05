@@ -4,9 +4,11 @@
 
 ## 준비
 
-1. `scripts/local/server/values.example.yaml`을 `local/server/values.yaml`로 복사하고 Kind API endpoint, Gateway ClusterIP를 현재 Docker 네트워크에 맞춘다.
+1. `scripts/local/server/values.example.yaml`을 `local/server/values.yaml`로 복사하고 Kind API endpoint, Gateway ClusterIP를 현재 Docker 네트워크에 맞춘다. Let’s Encrypt 인증서는 기본적으로 `local/letsencrypt/config/live/demo.flyingsnake.xyz/{fullchain.pem,privkey.pem}`에서 읽는다.
 2. Docker Desktop을 시작한 뒤 `scripts/local/server/create-cluster.sh`, `scripts/local/server/install-gateway.sh`, `scripts/local/git-server/start.sh`, `scripts/local/server/deploy-gitops.sh`를 실행한다.
 3. Argo CD Application을 수동 Sync하고 Vault가 Running 상태가 되면 `scripts/local/server/bootstrap-vault.sh`를 실행한다. 자동 Sync는 사용하지 않는다.
+
+로컬 데모는 인증서의 `*.demo.flyingsnake.xyz` SAN에 맞춰 `grafana`, `argocd`, `keycloak`, `awx`, `loki-ingest`, `mimir-ingest`, `tempo-ingest`, `pyroscope-ingest` 호스트를 사용한다. Gateway를 통해 127.0.0.1로 검증할 때도 curl의 `--resolve`가 인증서 hostname을 유지한다.
 
 ## 검증 명령
 

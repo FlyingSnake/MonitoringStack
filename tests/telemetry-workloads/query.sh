@@ -17,7 +17,7 @@ gateway_status() {
   local endpoint_host="$1"
   local endpoint_path="$2"
   local authentication="$3"
-  local args=(--silent --output /dev/null --write-out '%{http_code}' --resolve "${endpoint_host}:443:127.0.0.1" --cacert "${state_dir}/ca.crt")
+  local args=(--silent --output /dev/null --write-out '%{http_code}' --resolve "${endpoint_host}:443:127.0.0.1")
   if [[ "${authentication}" == "mtls" || "${authentication}" == "full" ]]; then
     args+=(--cert "${state_dir}/alloy-client.crt" --key "${state_dir}/alloy-client.key")
   fi
@@ -34,7 +34,6 @@ gateway_query() {
 
   curl --silent --show-error --fail \
     --resolve "${endpoint_host}:443:127.0.0.1" \
-    --cacert "${state_dir}/ca.crt" \
     --cert "${state_dir}/alloy-client.crt" \
     --key "${state_dir}/alloy-client.key" \
     --user "alloy:${ingestion_password}" \
@@ -57,13 +56,13 @@ trap cleanup EXIT
 
 loki_result="${work_dir}/loki.json"
 mimir_result="${work_dir}/mimir.json"
-gateway_query loki.ingest.localhost '/loki/api/v1/query_range?query=%7Bnamespace%3D%22telemetry-workloads%22%7D&limit=100' "${loki_result}"
-gateway_query mimir.ingest.localhost '/prometheus/api/v1/query?query=telemetry_workload_heartbeat_total' "${mimir_result}"
+gateway_query loki-ingest.demo.flyingsnake.xyz '/loki/api/v1/query_range?query=%7Bnamespace%3D%22telemetry-workloads%22%7D&limit=100' "${loki_result}"
+gateway_query mimir-ingest.demo.flyingsnake.xyz '/prometheus/api/v1/query?query=telemetry_workload_heartbeat_total' "${mimir_result}"
 
-[[ "$(gateway_status loki.ingest.localhost /loki/api/v1/labels full)" == "200" ]]
-[[ "$(gateway_status loki.ingest.localhost /loki/api/v1/labels mtls)" == "401" ]]
+[[ "$(gateway_status loki-ingest.demo.flyingsnake.xyz /loki/api/v1/labels full)" == "200" ]]
+[[ "$(gateway_status loki-ingest.demo.flyingsnake.xyz /loki/api/v1/labels mtls)" == "401" ]]
 set +e
-basic_only_status="$(gateway_status loki.ingest.localhost /loki/api/v1/labels basic)"
+basic_only_status="$(gateway_status loki-ingest.demo.flyingsnake.xyz /loki/api/v1/labels basic)"
 basic_only_exit=$?
 set -e
 [[ "${basic_only_exit}" -ne 0 || "${basic_only_status}" != "200" ]]
