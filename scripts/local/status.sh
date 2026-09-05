@@ -20,7 +20,15 @@ if [[ -n "${unhealthy}" ]]; then
 fi
 
 kubectl -n envoy-gateway-system get secret/monitoring-ui-tls secret/monitoring-ingest-tls >/dev/null
-route_errors="$(kubectl get httproute -A -o json | jq -r '.items[] | select(any(.status.parents[]?.conditions[]?; .type == "Accepted" and .status != "True")) | "\(.metadata.namespace)/\(.metadata.name)"')"
+route_errors="$(kubectl get httproute -A -o json | jq -r '
+  .items[]
+  | .metadata.generation as $generation
+  | [ .status.parents[]?.conditions[]?
+      | select(.type == "Accepted" and .observedGeneration == $generation)
+    ] as $accepted
+  | select(($accepted | length) == 0 or any($accepted[]; .status != "True"))
+  | "\(.metadata.namespace)/\(.metadata.name)"
+')"
 if [[ -n "${route_errors}" ]]; then
   echo "Gateway HTTPRoute acceptance failed:" >&2
   printf '%s\n' "${route_errors}" >&2
