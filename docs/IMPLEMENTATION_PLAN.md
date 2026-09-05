@@ -21,7 +21,7 @@
 ### 현재 후속 작업
 
 - 실제 Windows WinRM 대상에서 Alloy 설치·업그레이드와 Event Log 수집을 검증한다.
-- 신뢰할 수 있는 로컬 CA 또는 테스트 계정을 제공한 뒤 Grafana 브라우저 Keycloak 로그인과 datasource Explore 조회를 수행한다.
+- Let's Encrypt 인증서가 적용된 실제 도메인과 테스트 계정을 준비한 뒤 Grafana 브라우저 Keycloak 로그인과 datasource Explore 조회를 수행한다.
 - x86_64 Linux 또는 ARM64 ApiWrapper를 제공하는 Pyroscope .NET profiler 릴리스에서 .NET 프로파일을 검증한다.
 - `stg`/`prd`의 실제 EKS, KMS/IRSA, Gateway, 외부 S3·Kafka 입력값이 준비된 뒤 `make preflight-server ENV=<환경>`을 통과시켜 수동 Sync한다.
 

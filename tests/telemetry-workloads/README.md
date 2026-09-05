@@ -26,7 +26,7 @@
 
 `query.sh`는 위 UI 확인 전에 Gateway mTLS+Basic Auth 회귀, Loki/Mimir/Tempo API 조회, Pyroscope 수신 로그를 자동 확인합니다.
 
-로컬 브라우저가 Vault CA를 신뢰하지 않으면 Grafana UI 접근은 인증서 오류로 중단된다. 이 경우 CA 신뢰 설정과 Keycloak 테스트 계정 준비 후 이 절차를 수행한다.
+Grafana 브라우저 OIDC 검증은 Let's Encrypt 인증서가 적용된 실제 도메인과 Keycloak 테스트 계정이 준비된 뒤 수행한다. Let's Encrypt HTTP-01을 사용한다면 해당 도메인의 80/443 접근과 DNS 해석이 가능해야 한다.
 
 ## ARM64 Kind의 .NET 프로파일 제한
 
