@@ -48,13 +48,13 @@ data:
       {{- if .Values.keycloak.bootstrapUser.enabled }}
       "users": [
         {
-          "username": "${MONITORING_BOOTSTRAP_USERNAME}",
+          "username": "$(env:MONITORING_BOOTSTRAP_USERNAME)",
           "enabled": true,
           "emailVerified": true,
           "groups": ["platform-admin"],
           "realmRoles": ["platform-admin"],
           "credentials": [
-            {"type": "password", "value": "${MONITORING_BOOTSTRAP_PASSWORD}", "temporary": false}
+            {"type": "password", "value": "$(env:MONITORING_BOOTSTRAP_PASSWORD)", "temporary": false}
           ]
         }
       ],
@@ -64,7 +64,7 @@ data:
           "clientId": "argocd",
           "protocol": "openid-connect",
           "publicClient": false,
-          "secret": "${ARGOCD_CLIENT_SECRET}",
+          "secret": "$(env:ARGOCD_CLIENT_SECRET)",
           "redirectUris": [{{ printf "%s/auth/callback" .Values.keycloak.hosts.argocd | quote }}],
           "webOrigins": [{{ .Values.keycloak.hosts.argocd | quote }}],
           "defaultClientScopes": ["profile", "email", "roles", "groups"]
@@ -73,7 +73,7 @@ data:
           "clientId": "grafana",
           "protocol": "openid-connect",
           "publicClient": false,
-          "secret": "${GRAFANA_CLIENT_SECRET}",
+          "secret": "$(env:GRAFANA_CLIENT_SECRET)",
           "redirectUris": [{{ printf "%s/login/generic_oauth" .Values.keycloak.hosts.grafana | quote }}],
           "webOrigins": [{{ .Values.keycloak.hosts.grafana | quote }}],
           "defaultClientScopes": ["profile", "email", "roles", "groups"]
@@ -82,7 +82,7 @@ data:
           "clientId": "awx",
           "protocol": "openid-connect",
           "publicClient": false,
-          "secret": "${AWX_CLIENT_SECRET}",
+          "secret": "$(env:AWX_CLIENT_SECRET)",
           "redirectUris": [{{ printf "%s/sso/complete/oidc/" .Values.keycloak.hosts.awx | quote }}],
           "webOrigins": [{{ .Values.keycloak.hosts.awx | quote }}],
           "defaultClientScopes": ["profile", "email", "roles", "groups"]
@@ -119,6 +119,8 @@ spec:
                   key: admin-password
             - name: IMPORT_FILES_LOCATIONS
               value: /config/*
+            - name: IMPORT_VAR_SUBSTITUTION_ENABLED
+              value: "true"
             - name: ARGOCD_CLIENT_SECRET
               valueFrom:
                 secretKeyRef: { name: {{ .Values.keycloak.oidcSecret }}, key: argocd-client-secret }
