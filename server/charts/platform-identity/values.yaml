@@ -4,6 +4,10 @@ keycloak:
   adminSecret: keycloak-admin
   oidcSecret: oidc-client-secrets
   image: adorsys/keycloak-config-cli:6.5.1-26
+  adminImage: bitnamilegacy/keycloak:26.3.3-debian-12-r0
+  vaultImage: hashicorp/vault:1.21.1
+  vaultAddress: http://vault.vault.svc.cluster.local:8200
+  vaultKubernetesAuthRole: keycloak-config
   hosts: {}
   # 로컬 데모에서만 활성화한다. 사용자명과 비밀번호는 Vault에서 동기화한
   # Secret으로 주입하며 values에는 두 값을 저장하지 않는다.
