@@ -30,6 +30,8 @@ applications:
   redpanda: { enabled: false }
   keycloak:
     values:
+      extraEnvVars:
+        - { name: KC_HOSTNAME, value: "https://keycloak.prd.example.internal" }
       postgresql:
         primary: { persistence: { enabled: true, size: 50Gi, storageClass: REQUIRED_STORAGE_CLASS } }
   platform-identity:

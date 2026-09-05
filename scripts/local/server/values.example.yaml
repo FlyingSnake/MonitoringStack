@@ -83,6 +83,8 @@ applications:
       gatewaySecretNamespace: envoy-gateway-system
   keycloak:
     values:
+      extraEnvVars:
+        - { name: KC_HOSTNAME, value: "https://keycloak.demo.flyingsnake.xyz" }
       postgresql:
         primary: { persistence: { enabled: false } }
   platform-identity:
