@@ -125,28 +125,27 @@ if vault read pki_int/cert/ca >/dev/null 2>&1; then
     max_ttl=168h >/dev/null
 fi
 
-if [[ -f "${seed_marker}" ]]; then
-  echo "Vault 초기 seed는 이미 존재하며, Kubernetes Auth role을 갱신했습니다. State: ${state_dir}"
-  exit 0
+if [[ ! -f "${seed_marker}" ]]; then
+  vault secrets enable -path=monitoring -version=2 kv >/dev/null 2>&1 || true
+  vault secrets enable pki >/dev/null 2>&1 || true
+  vault secrets tune -max-lease-ttl=8760h pki
+  vault write -field=certificate pki/root/generate/internal common_name=monitoring-local-root ttl=8760h >/dev/null
+  vault secrets enable -path=pki_int pki >/dev/null 2>&1 || true
+  vault secrets tune -max-lease-ttl=4380h pki_int
+  intermediate_csr="$(vault write -field=csr pki_int/intermediate/generate/internal common_name=monitoring-local-intermediate)"
+  signed_intermediate="$(vault write -field=certificate pki/root/sign-intermediate csr="${intermediate_csr}" format=pem_bundle ttl=4380h)"
+  vault write pki_int/intermediate/set-signed certificate="${signed_intermediate}" >/dev/null
+  vault write pki_int/roles/monitoring-server \
+    allowed_domains=localhost \
+    allow_subdomains=true \
+    allow_bare_domains=true \
+    max_ttl=720h >/dev/null
+  vault write pki_int/roles/monitoring-client \
+    allow_any_name=true \
+    max_ttl=168h >/dev/null
+else
+  echo "Vault 초기 seed가 존재합니다. 기존 Kubernetes Secret을 기준으로 자격증명 계약을 다시 확인합니다. State: ${state_dir}"
 fi
-
-vault secrets enable -path=monitoring -version=2 kv >/dev/null 2>&1 || true
-vault secrets enable pki >/dev/null 2>&1 || true
-vault secrets tune -max-lease-ttl=8760h pki
-vault write -field=certificate pki/root/generate/internal common_name=monitoring-local-root ttl=8760h >/dev/null
-vault secrets enable -path=pki_int pki >/dev/null 2>&1 || true
-vault secrets tune -max-lease-ttl=4380h pki_int
-intermediate_csr="$(vault write -field=csr pki_int/intermediate/generate/internal common_name=monitoring-local-intermediate)"
-signed_intermediate="$(vault write -field=certificate pki/root/sign-intermediate csr="${intermediate_csr}" format=pem_bundle ttl=4380h)"
-vault write pki_int/intermediate/set-signed certificate="${signed_intermediate}" >/dev/null
-vault write pki_int/roles/monitoring-server \
-  allowed_domains=localhost \
-  allow_subdomains=true \
-  allow_bare_domains=true \
-  max_ttl=720h >/dev/null
-vault write pki_int/roles/monitoring-client \
-  allow_any_name=true \
-  max_ttl=168h >/dev/null
 
 random_secret() { openssl rand -base64 36 | tr -d '\n'; }
 
@@ -196,6 +195,8 @@ secret_or_default() {
 
 keycloak_admin="$(secret_or_random keycloak keycloak-admin admin-password)"
 keycloak_database="$(secret_or_random keycloak keycloak-postgresql password)"
+keycloak_bootstrap_username="$(secret_or_default keycloak keycloak-bootstrap-user username platform-admin)"
+keycloak_bootstrap_password="$(secret_or_random keycloak keycloak-bootstrap-user password)"
 minio_user="$(secret_or_default minio minio-root root-user monitoring)"
 minio_password="$(secret_or_random minio minio-root root-password)"
 awx_admin="$(secret_or_random awx awx-admin password)"
@@ -211,6 +212,7 @@ htpasswd_entry="alloy:{SHA}${ingestion_password_sha1}"
 
 vault kv put monitoring/keycloak admin-password="${keycloak_admin}" >/dev/null
 vault kv put monitoring/keycloak-postgresql password="${keycloak_database}" >/dev/null
+vault kv put monitoring/keycloak-user username="${keycloak_bootstrap_username}" password="${keycloak_bootstrap_password}" >/dev/null
 vault kv put monitoring/minio root-user="${minio_user}" root-password="${minio_password}" >/dev/null
 vault kv put monitoring/object-storage access-key-id="${minio_user}" secret-access-key="${minio_password}" >/dev/null
 vault kv put monitoring/awx admin-password="${awx_admin}" >/dev/null

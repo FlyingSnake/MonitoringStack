@@ -115,6 +115,7 @@ applications:
       externalSecrets:
         - { name: keycloak-admin, namespace: keycloak, targetSecret: keycloak-admin, keys: [{ secretKey: admin-password, remoteKey: keycloak, property: admin-password }] }
         - { name: keycloak-postgresql, namespace: keycloak, targetSecret: keycloak-postgresql, keys: [{ secretKey: password, remoteKey: keycloak-postgresql, property: password }] }
+        - { name: keycloak-bootstrap-user, namespace: keycloak, targetSecret: keycloak-bootstrap-user, keys: [{ secretKey: username, remoteKey: keycloak-user, property: username }, { secretKey: password, remoteKey: keycloak-user, property: password }] }
         - { name: oidc-client-secrets, namespace: keycloak, targetSecret: oidc-client-secrets, keys: [{ secretKey: argocd-client-secret, remoteKey: oidc, property: argocd-client-secret }, { secretKey: grafana-client-secret, remoteKey: oidc, property: grafana-client-secret }, { secretKey: awx-client-secret, remoteKey: oidc, property: awx-client-secret }] }
         - { name: argocd-oidc, namespace: argocd, targetSecret: argocd-secret, creationPolicy: Merge, keys: [{ secretKey: oidc.keycloak.clientSecret, remoteKey: oidc, property: argocd-client-secret }] }
         - { name: oidc-client-secrets, namespace: grafana, targetSecret: oidc-client-secrets, keys: [{ secretKey: grafana-client-secret, remoteKey: oidc, property: grafana-client-secret }] }

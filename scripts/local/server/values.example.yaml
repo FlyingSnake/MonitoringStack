@@ -90,6 +90,7 @@ applications:
   platform-identity:
     values:
       keycloak:
+        bootstrapUser: { enabled: true }
         hosts: { argocd: "https://argocd.demo.flyingsnake.xyz", grafana: "https://grafana.demo.flyingsnake.xyz", awx: "https://awx.demo.flyingsnake.xyz" }
   minio:
     values:

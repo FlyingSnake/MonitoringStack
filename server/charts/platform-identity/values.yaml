@@ -5,3 +5,10 @@ keycloak:
   oidcSecret: oidc-client-secrets
   image: adorsys/keycloak-config-cli:6.5.1-26
   hosts: {}
+  # 로컬 데모에서만 활성화한다. 사용자명과 비밀번호는 Vault에서 동기화한
+  # Secret으로 주입하며 values에는 두 값을 저장하지 않는다.
+  bootstrapUser:
+    enabled: false
+    secret: keycloak-bootstrap-user
+    usernameKey: username
+    passwordKey: password
