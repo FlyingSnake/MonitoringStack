@@ -156,6 +156,9 @@ applications:
     enabled: true
     namespace: keycloak
     syncWave: "11"
+    # Sync Hook Job은 Argo CD가 force recreate한다. Server-Side Apply와
+    # 결합하면 kubectl 옵션 충돌이 나므로 이 Application만 일반 apply를 쓴다.
+    serverSideApply: false
     source: { type: git, path: server/charts/platform-identity }
     values:
       keycloak:

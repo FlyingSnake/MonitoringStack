@@ -173,9 +173,6 @@ metadata:
     argocd.argoproj.io/hook: Sync
     argocd.argoproj.io/hook-delete-policy: BeforeHookCreation,HookSucceeded
     argocd.argoproj.io/sync-wave: "1"
-    # Hook Job은 매 Sync마다 recreate되므로 Argo CD의 ServerSideApply 전역
-    # 옵션과 force 생성이 충돌하지 않도록 이 리소스에만 일반 apply를 쓴다.
-    argocd.argoproj.io/sync-options: ServerSideApply=false
 spec:
   backoffLimit: 3
   template:
