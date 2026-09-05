@@ -6,7 +6,7 @@
 
 1. `scripts/local/server/values.example.yaml`을 `local/server/values.yaml`로 복사하고 Kind API endpoint, Gateway ClusterIP를 현재 Docker 네트워크에 맞춘다. Let’s Encrypt 인증서는 기본적으로 `local/letsencrypt/config/live/demo.flyingsnake.xyz/{fullchain.pem,privkey.pem}`에서 읽는다.
 2. Docker Desktop을 시작한 뒤 `scripts/local/server/create-cluster.sh`, `scripts/local/server/install-gateway.sh`, `scripts/local/git-server/start.sh`, `scripts/local/server/deploy-gitops.sh`를 실행한다.
-3. Argo CD Application을 수동 Sync하고 Vault가 Running 상태가 되면 `scripts/local/server/bootstrap-vault.sh`를 실행한다. 자동 Sync는 사용하지 않는다.
+3. Argo CD Application을 수동 Sync하고 Vault가 Running 상태가 되면 `scripts/local/server/bootstrap-vault.sh`를 실행한다. 자동 Sync는 사용하지 않는다. 로컬 Vault가 비영속 상태로 초기화된 경우에도 이 스크립트는 기존 ExternalSecret target Secret의 Keycloak·PostgreSQL·MinIO·AWX·OIDC·Alloy 수집 자격증명을 새 Vault에 먼저 복원한다. 따라서 실행 중인 stateful 서비스와 자격증명이 불일치하지 않는다. 처음 설치처럼 target Secret이 없을 때만 새 값을 생성한다. Vault PKI CA와 Alloy 클라이언트 인증서는 Vault 재생성 시 새로 발급되므로, 이후 `platform-secrets`를 동기화하고 `make local-k8s-alloy-smoke`로 Alloy를 다시 배포한다.
 
 로컬 데모는 인증서의 `*.demo.flyingsnake.xyz` SAN에 맞춰 `grafana`, `argocd`, `keycloak`, `awx`, `loki-ingest`, `mimir-ingest`, `tempo-ingest`, `pyroscope-ingest` 호스트를 사용한다. Gateway를 통해 127.0.0.1로 검증할 때도 curl의 `--resolve`가 인증서 hostname을 유지한다.
 

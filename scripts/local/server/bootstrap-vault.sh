@@ -149,11 +149,61 @@ vault write pki_int/roles/monitoring-client \
   max_ttl=168h >/dev/null
 
 random_secret() { openssl rand -base64 36 | tr -d '\n'; }
-keycloak_admin="$(random_secret)"
-keycloak_database="$(random_secret)"
-minio_password="$(random_secret)"
-awx_admin="$(random_secret)"
-ingestion_password="$(random_secret)"
+
+# Vault가 비영속 상태로 재초기화돼도 이미 실행 중인 stateful 서비스의 DB와
+# 사용자 비밀번호가 바뀌면 안 된다. ExternalSecret target Secret은 Vault보다
+# 오래 남아 있으므로, 값이 있으면 새 Vault에 복원하고 첫 설치에서만 생성한다.
+existing_secret_value() {
+  local secret_namespace="$1"
+  local secret_name="$2"
+  local secret_key="$3"
+  local encoded
+
+  encoded="$(kubectl -n "${secret_namespace}" get secret "${secret_name}" -o json 2>/dev/null \
+    | jq -r --arg key "${secret_key}" '.data[$key] // empty' 2>/dev/null)" || return 1
+  [[ -n "${encoded}" ]] || return 1
+  printf '%s' "${encoded}" | base64 -d 2>/dev/null
+}
+
+secret_or_random() {
+  local secret_namespace="$1"
+  local secret_name="$2"
+  local secret_key="$3"
+  local value
+
+  if value="$(existing_secret_value "${secret_namespace}" "${secret_name}" "${secret_key}")" && [[ -n "${value}" ]]; then
+    echo "Preserving ${secret_namespace}/${secret_name}:${secret_key} in the reinitialized Vault." >&2
+    printf '%s' "${value}"
+  else
+    random_secret
+  fi
+}
+
+secret_or_default() {
+  local secret_namespace="$1"
+  local secret_name="$2"
+  local secret_key="$3"
+  local default_value="$4"
+  local value
+
+  if value="$(existing_secret_value "${secret_namespace}" "${secret_name}" "${secret_key}")" && [[ -n "${value}" ]]; then
+    echo "Preserving ${secret_namespace}/${secret_name}:${secret_key} in the reinitialized Vault." >&2
+    printf '%s' "${value}"
+  else
+    printf '%s' "${default_value}"
+  fi
+}
+
+keycloak_admin="$(secret_or_random keycloak keycloak-admin admin-password)"
+keycloak_database="$(secret_or_random keycloak keycloak-postgresql password)"
+minio_user="$(secret_or_default minio minio-root root-user monitoring)"
+minio_password="$(secret_or_random minio minio-root root-password)"
+awx_admin="$(secret_or_random awx awx-admin password)"
+argocd_client_secret="$(secret_or_random keycloak oidc-client-secrets argocd-client-secret)"
+grafana_client_secret="$(secret_or_random keycloak oidc-client-secrets grafana-client-secret)"
+awx_client_secret="$(secret_or_random keycloak oidc-client-secrets awx-client-secret)"
+ingestion_username="$(secret_or_default alloy alloy-ingest-client INGEST_USERNAME alloy)"
+ingestion_password="$(secret_or_random alloy alloy-ingest-client INGEST_PASSWORD)"
 # Envoy Gateway BasicAuth는 Apache htpasswd의 {SHA} 형식만 지원한다.
 # 이 값은 로컬 Vault에만 저장하며 Git에는 평문 자격증명을 남기지 않는다.
 ingestion_password_sha1="$(printf '%s' "${ingestion_password}" | openssl dgst -sha1 -binary | base64)"
@@ -161,16 +211,16 @@ htpasswd_entry="alloy:{SHA}${ingestion_password_sha1}"
 
 vault kv put monitoring/keycloak admin-password="${keycloak_admin}" >/dev/null
 vault kv put monitoring/keycloak-postgresql password="${keycloak_database}" >/dev/null
-vault kv put monitoring/minio root-user=monitoring root-password="${minio_password}" >/dev/null
-vault kv put monitoring/object-storage access-key-id=monitoring secret-access-key="${minio_password}" >/dev/null
+vault kv put monitoring/minio root-user="${minio_user}" root-password="${minio_password}" >/dev/null
+vault kv put monitoring/object-storage access-key-id="${minio_user}" secret-access-key="${minio_password}" >/dev/null
 vault kv put monitoring/awx admin-password="${awx_admin}" >/dev/null
 vault kv put monitoring/oidc \
-  argocd-client-secret="$(random_secret)" \
-  grafana-client-secret="$(random_secret)" \
-  awx-client-secret="$(random_secret)" >/dev/null
+  argocd-client-secret="${argocd_client_secret}" \
+  grafana-client-secret="${grafana_client_secret}" \
+  awx-client-secret="${awx_client_secret}" >/dev/null
 vault kv put monitoring/ingestion \
   htpasswd="${htpasswd_entry}" \
-  username=alloy \
+  username="${ingestion_username}" \
   password="${ingestion_password}" >/dev/null
 vault kv put monitoring/pki ingest-ca-crt="$(vault read -field=certificate pki_int/cert/ca)" >/dev/null
 
