@@ -173,6 +173,9 @@ metadata:
     argocd.argoproj.io/hook: Sync
     argocd.argoproj.io/hook-delete-policy: BeforeHookCreation,HookSucceeded
     argocd.argoproj.io/sync-wave: "1"
+    # Replace는 ServerSideApply보다 우선한다. Hook Job의 force recreate에
+    # 필요한 kubectl 옵션 조합을 Argo CD가 명확하게 선택하도록 한다.
+    argocd.argoproj.io/sync-options: Replace=true
 spec:
   backoffLimit: 3
   template:
