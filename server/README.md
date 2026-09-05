@@ -47,4 +47,4 @@ server/
 
 로컬 Kind는 `server/env/dev/values.yaml` 위에 `local/server/values.yaml`을 겹쳐 모든 서버 컴포넌트를 단일 복제본·비영속 스토리지로 기동합니다. 해당 runtime values의 추적 가능한 예시는 [../scripts/local/server/values.example.yaml](../scripts/local/server/values.example.yaml)에 있으며, local Git daemon의 `dev` 브랜치를 Argo CD source로 사용하므로 원격 push 없이도 수동 Sync를 검증할 수 있습니다.
 
-수집 endpoint는 `loki|mimir|tempo|pyroscope.ingest.localhost`이며, Gateway에서 mTLS와 HTTP Basic Auth를 동시에 검증합니다. Vault bootstrap 뒤에만 ExternalSecret, Gateway TLS, AWX용 PKI와 Alloy client certificate를 생성합니다. 상태·UI API·AWX·언어별 telemetry 검증은 `make local-*` 명령으로 수행하며 자세한 실행 순서는 [../scripts/local/README.md](../scripts/local/README.md)를 참고하세요.
+로컬 Let’s Encrypt 데모의 수집 endpoint는 `loki-ingest`, `mimir-ingest`, `tempo-ingest`, `pyroscope-ingest.demo.flyingsnake.xyz`이며, Gateway에서 mTLS와 HTTP Basic Auth를 동시에 검증합니다. Gateway 서버 TLS는 Let’s Encrypt Secret을 사용하고, Vault bootstrap은 ExternalSecret·AWX용 PKI·Alloy client certificate만 생성합니다. 상태·UI API·AWX·언어별 telemetry 검증은 `make local-*` 명령으로 수행하며 자세한 실행 순서는 [../scripts/local/README.md](../scripts/local/README.md)를 참고하세요.

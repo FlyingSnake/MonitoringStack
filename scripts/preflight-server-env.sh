@@ -43,10 +43,21 @@ ruby -ryaml -e '
   tls = gateway.fetch("tls")
   hosts = tls.fetch("uiDnsNames") + tls.fetch("ingestDnsNames")
   abort("Gateway TLS names are required") if hosts.empty? || hosts.uniq.length != hosts.length
-  local_overlay = hosts.all? { |host| host.end_with?(".localhost") }
-  if local_overlay
+  localhost_overlay = hosts.all? { |host| host.end_with?(".localhost") }
+  demo_overlay = hosts.all? { |host| host.end_with?(".demo.flyingsnake.xyz") }
+  if localhost_overlay
     abort("Local UI hosts must use .ui.localhost") unless tls.fetch("uiDnsNames").all? { |host| host.end_with?(".ui.localhost") }
     abort("Local ingest hosts must use .ingest.localhost") unless tls.fetch("ingestDnsNames").all? { |host| host.end_with?(".ingest.localhost") }
+  elsif demo_overlay
+    expected_ui = %w[grafana argocd keycloak awx].map { |name| "#{name}.demo.flyingsnake.xyz" }
+    expected_ingest = %w[loki mimir tempo pyroscope].map { |name| "#{name}-ingest.demo.flyingsnake.xyz" }
+    abort("Local demo UI hosts do not match the Lets Encrypt wildcard contract") unless tls.fetch("uiDnsNames").sort == expected_ui.sort
+    abort("Local demo ingest hosts do not match the Lets Encrypt wildcard contract") unless tls.fetch("ingestDnsNames").sort == expected_ingest.sort
+    abort("Local demo must use externally managed Lets Encrypt TLS Secrets") unless tls["managedByCertManager"] == false
+    expected_ingest_listeners = %w[loki mimir tempo pyroscope].map { |name| "#{name}-ingest-https" }
+    abort("Local demo ingest listeners are incomplete") unless gateway.fetch("ingestListeners").sort == expected_ingest_listeners.sort
+    abort("Local demo UI routes must bind to explicit TLS listeners") unless gateway.fetch("uiRoutes").all? { |route| route["listener"].to_s.end_with?("-ui-https") }
+    abort("Local demo ingest routes must bind to explicit mTLS listeners") unless gateway.fetch("ingestionRoutes").all? { |route| route["listener"].to_s.end_with?("-ingest-https") }
   else
     expected_fragment = ".#{environment}."
     abort("Gateway DNS names do not match #{environment} environment") unless hosts.all? { |host| host.include?(expected_fragment) }
@@ -72,7 +83,7 @@ ruby -ryaml -e '
     %w[minio redpanda].each { |name| find_application.call(name) }
   end
 
-  unless local_overlay
+  unless localhost_overlay || demo_overlay
     expected_revision = { "dev" => "dev", "stg" => "stg", "prd" => "main" }.fetch(environment)
     %w[linux windows k8s].each do |target|
       agent = YAML.load_file("agents/env/#{environment}/#{target}/values.yaml")

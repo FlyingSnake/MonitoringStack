@@ -8,6 +8,8 @@ chart_version="v1.9.0"
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 repo_root="$(cd "${script_dir}/../../.." && pwd)"
 runtime_dir="${MONITORING_LOCAL_RUNTIME_DIR:-${repo_root}/local}"
+certificate_name="${MONITORING_LOCAL_LE_CERT_NAME:-demo.flyingsnake.xyz}"
+certificate_dir="${MONITORING_LOCAL_LE_CERT_DIR:-${runtime_dir}/letsencrypt/config/live/${certificate_name}}"
 context="kind-${cluster_name}"
 
 if ! kind get clusters | grep -qx "${cluster_name}"; then
@@ -27,25 +29,28 @@ helm upgrade --install "${release_name}" \
 
 kubectl -n "${namespace}" rollout status deployment/envoy-gateway --timeout=5m
 
-tls_dir="${runtime_dir}/server/.tls"
-mkdir -p "${tls_dir}"
-create_local_tls_secret() {
+fullchain="${certificate_dir}/fullchain.pem"
+private_key="${certificate_dir}/privkey.pem"
+if [[ ! -r "${fullchain}" || ! -r "${private_key}" ]]; then
+  echo "Let's Encrypt certificate files are unavailable: ${certificate_dir}" >&2
+  echo "Set MONITORING_LOCAL_LE_CERT_DIR or place fullchain.pem and privkey.pem under local/letsencrypt/config/live/${certificate_name}." >&2
+  exit 1
+fi
+
+create_letsencrypt_tls_secret() {
   local secret_name="$1"
-  local hostname="$2"
-  openssl req -x509 -newkey rsa:2048 -nodes \
-    -keyout "${tls_dir}/${secret_name}.key" \
-    -out "${tls_dir}/${secret_name}.crt" \
-    -days 30 \
-    -subj "/CN=${hostname}" \
-    -addext "subjectAltName=DNS:${hostname}" \
-    >/dev/null 2>&1
   kubectl -n "${namespace}" create secret tls "${secret_name}" \
-    --cert="${tls_dir}/${secret_name}.crt" \
-    --key="${tls_dir}/${secret_name}.key" \
+    --cert="${fullchain}" \
+    --key="${private_key}" \
     --dry-run=client -o yaml | kubectl apply -f -
 }
-create_local_tls_secret monitoring-ui-tls echo.ui.localhost
-create_local_tls_secret monitoring-ingest-tls loki.ingest.localhost
+# 이전 Vault/cert-manager Certificate가 남아 있으면 외부 인증서 Secret을 다시
+# 덮어쓸 수 있다. cert-manager가 아직 설치되지 않은 최초 Gateway 설치도 허용한다.
+if kubectl api-resources --api-group=cert-manager.io -o name 2>/dev/null | grep -qx certificates.cert-manager.io; then
+  kubectl -n "${namespace}" delete certificate monitoring-ui-tls monitoring-ingest-tls --ignore-not-found
+fi
+create_letsencrypt_tls_secret monitoring-ui-tls
+create_letsencrypt_tls_secret monitoring-ingest-tls
 
 kubectl apply -f "${script_dir}/envoy-gateway.yaml"
 kubectl apply -f "${script_dir}/gateway-smoke-test.yaml"
@@ -73,8 +78,8 @@ fi
 
 echo "Waiting for host port smoke tests..."
 for attempt in $(seq 1 30); do
-  if curl --fail --silent --show-error --max-time 5 -H 'Host: echo.ui.localhost' http://127.0.0.1/ >/dev/null && \
-    curl --insecure --fail --silent --show-error --max-time 5 --resolve echo.ui.localhost:443:127.0.0.1 https://echo.ui.localhost/ >/dev/null; then
+  if curl --fail --silent --show-error --max-time 5 -H 'Host: grafana.demo.flyingsnake.xyz' http://127.0.0.1/ >/dev/null && \
+    curl --fail --silent --show-error --max-time 5 --resolve grafana.demo.flyingsnake.xyz:443:127.0.0.1 https://grafana.demo.flyingsnake.xyz/ >/dev/null; then
     echo "Envoy Gateway is reachable at host ports 80 and 443."
     exit 0
   fi

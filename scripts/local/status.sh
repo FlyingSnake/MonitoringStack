@@ -19,7 +19,7 @@ if [[ -n "${unhealthy}" ]]; then
   exit 1
 fi
 
-kubectl -n envoy-gateway-system wait --for=condition=Ready certificate/monitoring-ui-tls certificate/monitoring-ingest-tls --timeout=10s >/dev/null
+kubectl -n envoy-gateway-system get secret/monitoring-ui-tls secret/monitoring-ingest-tls >/dev/null
 route_errors="$(kubectl get httproute -A -o json | jq -r '.items[] | select(any(.status.parents[]?.conditions[]?; .type == "Accepted" and .status != "True")) | "\(.metadata.namespace)/\(.metadata.name)"')"
 if [[ -n "${route_errors}" ]]; then
   echo "Gateway HTTPRoute acceptance failed:" >&2

@@ -48,10 +48,10 @@ spec:
       allowedRoutes:
         namespaces:
           from: All
-    - name: ui-https
+    - name: grafana-ui-https
       protocol: HTTPS
       port: 443
-      hostname: "*.ui.localhost"
+      hostname: grafana.demo.flyingsnake.xyz
       tls:
         mode: Terminate
         certificateRefs:
@@ -60,10 +60,82 @@ spec:
       allowedRoutes:
         namespaces:
           from: All
-    - name: ingest-https
+    - name: argocd-ui-https
       protocol: HTTPS
       port: 443
-      hostname: "*.ingest.localhost"
+      hostname: argocd.demo.flyingsnake.xyz
+      tls:
+        mode: Terminate
+        certificateRefs:
+          - kind: Secret
+            name: monitoring-ui-tls
+      allowedRoutes:
+        namespaces:
+          from: All
+    - name: keycloak-ui-https
+      protocol: HTTPS
+      port: 443
+      hostname: keycloak.demo.flyingsnake.xyz
+      tls:
+        mode: Terminate
+        certificateRefs:
+          - kind: Secret
+            name: monitoring-ui-tls
+      allowedRoutes:
+        namespaces:
+          from: All
+    - name: awx-ui-https
+      protocol: HTTPS
+      port: 443
+      hostname: awx.demo.flyingsnake.xyz
+      tls:
+        mode: Terminate
+        certificateRefs:
+          - kind: Secret
+            name: monitoring-ui-tls
+      allowedRoutes:
+        namespaces:
+          from: All
+    - name: loki-ingest-https
+      protocol: HTTPS
+      port: 443
+      hostname: loki-ingest.demo.flyingsnake.xyz
+      tls:
+        mode: Terminate
+        certificateRefs:
+          - kind: Secret
+            name: monitoring-ingest-tls
+      allowedRoutes:
+        namespaces:
+          from: All
+    - name: mimir-ingest-https
+      protocol: HTTPS
+      port: 443
+      hostname: mimir-ingest.demo.flyingsnake.xyz
+      tls:
+        mode: Terminate
+        certificateRefs:
+          - kind: Secret
+            name: monitoring-ingest-tls
+      allowedRoutes:
+        namespaces:
+          from: All
+    - name: tempo-ingest-https
+      protocol: HTTPS
+      port: 443
+      hostname: tempo-ingest.demo.flyingsnake.xyz
+      tls:
+        mode: Terminate
+        certificateRefs:
+          - kind: Secret
+            name: monitoring-ingest-tls
+      allowedRoutes:
+        namespaces:
+          from: All
+    - name: pyroscope-ingest-https
+      protocol: HTTPS
+      port: 443
+      hostname: pyroscope-ingest.demo.flyingsnake.xyz
       tls:
         mode: Terminate
         certificateRefs:

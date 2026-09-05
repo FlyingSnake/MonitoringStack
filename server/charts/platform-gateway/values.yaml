@@ -12,10 +12,16 @@ gateway:
     name: vault-pki
     kind: Issuer
   tls:
+    # true이면 cert-manager Issuer/Certificate를 렌더링한다. 외부에서 발급한
+    # TLS Secret을 주입하는 로컬 데모에서는 false로 설정한다.
+    managedByCertManager: true
     uiSecretName: monitoring-ui-tls
     ingestSecretName: monitoring-ingest-tls
     uiDnsNames: []
     ingestDnsNames: []
   mtlsCaSecret: monitoring-ingest-ca
+  # 하나의 수집 listener만 쓰는 환경은 비워 둔다. 값이 있으면 listener마다
+  # 별도 ClientTrafficPolicy를 만들어 mTLS를 강제한다.
+  ingestListeners: []
   uiRoutes: []
   ingestionRoutes: []

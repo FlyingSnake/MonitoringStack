@@ -79,7 +79,7 @@ applications:
           port: 8443
   platform-secrets:
     values:
-      vault: { server: http://vault.vault.svc.cluster.local:8200 }
+      vault: { server: "http://vault.vault.svc.cluster.local:8200" }
       gatewaySecretNamespace: envoy-gateway-system
   keycloak:
     values:
@@ -88,7 +88,7 @@ applications:
   platform-identity:
     values:
       keycloak:
-        hosts: { argocd: "https://argocd.ui.localhost", grafana: "https://grafana.ui.localhost", awx: "https://awx.ui.localhost" }
+        hosts: { argocd: "https://argocd.demo.flyingsnake.xyz", grafana: "https://grafana.demo.flyingsnake.xyz", awx: "https://awx.demo.flyingsnake.xyz" }
   minio:
     values:
       persistence: { enabled: false }
@@ -97,30 +97,32 @@ applications:
       storage: { persistentVolume: { enabled: false } }
   platform-observability:
     values:
-      grafana: { rootUrl: "https://grafana.ui.localhost", keycloakUrl: "https://keycloak.ui.localhost", replicas: 1 }
+      grafana: { rootUrl: "https://grafana.demo.flyingsnake.xyz", keycloakUrl: "https://keycloak.demo.flyingsnake.xyz", replicas: 1 }
   platform-gateway:
     values:
       gateway:
         name: monitoring-local
         namespace: envoy-gateway-system
         httpListener: http
-        uiListener: ui-https
-        ingestListener: ingest-https
+        uiListener: grafana-ui-https
+        ingestListener: loki-ingest-https
         uiHttpRedirect: { enabled: true, statusCode: 301 }
         vault: { server: "http://vault.vault.svc.cluster.local:8200", signPath: pki_int/sign/monitoring-server, kubernetesAuthMount: /v1/auth/kubernetes, issuerRole: cert-manager-issuer }
         tls:
-          uiDnsNames: [grafana.ui.localhost, argocd.ui.localhost, keycloak.ui.localhost, awx.ui.localhost]
-          ingestDnsNames: [loki.ingest.localhost, mimir.ingest.localhost, tempo.ingest.localhost, pyroscope.ingest.localhost]
+          managedByCertManager: false
+          uiDnsNames: [grafana.demo.flyingsnake.xyz, argocd.demo.flyingsnake.xyz, keycloak.demo.flyingsnake.xyz, awx.demo.flyingsnake.xyz]
+          ingestDnsNames: [loki-ingest.demo.flyingsnake.xyz, mimir-ingest.demo.flyingsnake.xyz, tempo-ingest.demo.flyingsnake.xyz, pyroscope-ingest.demo.flyingsnake.xyz]
+        ingestListeners: [loki-ingest-https, mimir-ingest-https, tempo-ingest-https, pyroscope-ingest-https]
         uiRoutes:
-          - { name: grafana, namespace: grafana, hostname: grafana.ui.localhost, service: grafana-service, port: 3000 }
-          - { name: keycloak, namespace: keycloak, hostname: keycloak.ui.localhost, service: keycloak, port: 80 }
-          - { name: argocd, namespace: argocd, hostname: argocd.ui.localhost, service: argocd-server, port: 80 }
-          - { name: awx, namespace: awx, hostname: awx.ui.localhost, service: monitoring-awx-service, port: 80 }
+          - { name: grafana, namespace: grafana, hostname: grafana.demo.flyingsnake.xyz, service: grafana-service, port: 3000, listener: grafana-ui-https }
+          - { name: keycloak, namespace: keycloak, hostname: keycloak.demo.flyingsnake.xyz, service: keycloak, port: 80, listener: keycloak-ui-https }
+          - { name: argocd, namespace: argocd, hostname: argocd.demo.flyingsnake.xyz, service: argocd-server, port: 80, listener: argocd-ui-https }
+          - { name: awx, namespace: awx, hostname: awx.demo.flyingsnake.xyz, service: monitoring-awx-service, port: 80, listener: awx-ui-https }
         ingestionRoutes:
-          - { name: loki-ingest, namespace: loki, hostname: loki.ingest.localhost, service: loki-gateway, port: 80, basicAuthSecret: ingestion-basic-auth }
-          - { name: mimir-ingest, namespace: monitoring-stack-server, hostname: mimir.ingest.localhost, service: mimir-gateway, port: 80, basicAuthSecret: ingestion-basic-auth }
-          - { name: tempo-ingest, namespace: monitoring-stack-server, hostname: tempo.ingest.localhost, service: tempo-distributor, port: 4318, basicAuthSecret: ingestion-basic-auth }
-          - { name: pyroscope-ingest, namespace: pyroscope, hostname: pyroscope.ingest.localhost, service: pyroscope, port: 4040, basicAuthSecret: ingestion-basic-auth }
+          - { name: loki-ingest, namespace: loki, hostname: loki-ingest.demo.flyingsnake.xyz, service: loki-gateway, port: 80, basicAuthSecret: ingestion-basic-auth, listener: loki-ingest-https }
+          - { name: mimir-ingest, namespace: monitoring-stack-server, hostname: mimir-ingest.demo.flyingsnake.xyz, service: mimir-gateway, port: 80, basicAuthSecret: ingestion-basic-auth, listener: mimir-ingest-https }
+          - { name: tempo-ingest, namespace: monitoring-stack-server, hostname: tempo-ingest.demo.flyingsnake.xyz, service: tempo-distributor, port: 4318, basicAuthSecret: ingestion-basic-auth, listener: tempo-ingest-https }
+          - { name: pyroscope-ingest, namespace: pyroscope, hostname: pyroscope-ingest.demo.flyingsnake.xyz, service: pyroscope, port: 4040, basicAuthSecret: ingestion-basic-auth, listener: pyroscope-ingest-https }
   awx-resources:
     values:
       awx: { projectsPersistence: false, projectsStorageSize: 1Gi, postgresStorageSize: 1Gi }
@@ -137,19 +139,19 @@ applications:
           username: alloytest
           credentialSecret: monitoring-linux-test-ssh
         alloyEnvironment:
-          LOKI_URL: https://loki.ingest.localhost/loki/api/v1/push
-          MIMIR_REMOTE_WRITE_URL: https://mimir.ingest.localhost/api/v1/push
+          LOKI_URL: https://loki-ingest.demo.flyingsnake.xyz/loki/api/v1/push
+          MIMIR_REMOTE_WRITE_URL: https://mimir-ingest.demo.flyingsnake.xyz/api/v1/push
           MONITORING_CLUSTER: local-kind
           MONITORING_ENVIRONMENT: dev
-          PYROSCOPE_URL: https://pyroscope.ingest.localhost
-          TEMPO_OTLP_HTTP_ENDPOINT: https://tempo.ingest.localhost
+          PYROSCOPE_URL: https://pyroscope-ingest.demo.flyingsnake.xyz
+          TEMPO_OTLP_HTTP_ENDPOINT: https://tempo-ingest.demo.flyingsnake.xyz
           ALLOY_TLS_CA_FILE: /etc/alloy/credentials/ca.crt
           ALLOY_TLS_CERT_FILE: /etc/alloy/credentials/tls.crt
           ALLOY_TLS_KEY_FILE: /etc/alloy/credentials/tls.key
         alloyHostAliases:
           - ip: 10.96.190.65
             hostnames:
-              - loki.ingest.localhost
-              - mimir.ingest.localhost
-              - tempo.ingest.localhost
-              - pyroscope.ingest.localhost
+              - loki-ingest.demo.flyingsnake.xyz
+              - mimir-ingest.demo.flyingsnake.xyz
+              - tempo-ingest.demo.flyingsnake.xyz
+              - pyroscope-ingest.demo.flyingsnake.xyz

@@ -20,7 +20,7 @@
 
 ## Grafana 수동 Smoke 절차
 
-1. `https://grafana.ui.localhost`에 접속해 Keycloak `monitoring` realm으로 로그인합니다.
+1. `https://grafana.demo.flyingsnake.xyz`에 접속해 Keycloak `monitoring` realm으로 로그인합니다.
 2. Grafana Explore에서 Loki의 `{namespace="telemetry-workloads"}` 로그, Mimir의 `telemetry_workload_heartbeat_total`, Tempo의 `service.name=telemetry.go` trace를 조회합니다.
 3. Pyroscope에서 `service_name=telemetry.go`, `telemetry.java`, `telemetry.nodejs` 프로파일을 확인합니다.
 
