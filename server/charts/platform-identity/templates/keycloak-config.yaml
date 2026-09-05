@@ -118,6 +118,9 @@ spec:
     spec:
       restartPolicy: OnFailure
       serviceAccountName: keycloak-config
+      securityContext:
+        fsGroup: 1001
+        fsGroupChangePolicy: OnRootMismatch
       containers:
         - name: keycloak-config-cli
           image: {{ .Values.keycloak.image | quote }}
@@ -156,44 +159,8 @@ spec:
           volumeMounts:
             - name: realm
               mountPath: /config
-      volumes:
-        - name: realm
-          configMap:
-            name: keycloak-realm-config
----
-# Keycloak은 confidential client를 생성할 때 client secret을 자체 생성한다.
-# 이 Hook은 실제 생성된 값을 Vault에 반영한다. 그 다음 platform-secrets를
-# 수동 Sync하면 Grafana·Argo CD·AWX가 같은 값을 ExternalSecret으로 받는다.
-apiVersion: batch/v1
-kind: Job
-metadata:
-  name: keycloak-oidc-secret-sync
-  namespace: keycloak
-  annotations:
-    argocd.argoproj.io/hook: Sync
-    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation,HookSucceeded
-    argocd.argoproj.io/sync-wave: "1"
-    # Replace는 ServerSideApply보다 우선한다. Hook Job의 force recreate에
-    # 필요한 kubectl 옵션 조합을 Argo CD가 명확하게 선택하도록 한다.
-    argocd.argoproj.io/sync-options: Replace=true
-spec:
-  backoffLimit: 3
-  template:
-    metadata:
-      labels:
-        app.kubernetes.io/managed-by: monitoring-stack
-        app.kubernetes.io/name: keycloak-oidc-secret-sync
-    spec:
-      restartPolicy: OnFailure
-      serviceAccountName: keycloak-config
-      securityContext:
-        fsGroup: 1001
-        fsGroupChangePolicy: OnRootMismatch
-      volumes:
-        - name: oidc-client-secrets
-          emptyDir:
-            medium: Memory
-      containers:
+        # Keycloak Config CLI가 client를 만든 뒤 실제 생성된 confidential
+        # client secret을 읽어 메모리 volume으로 넘긴다.
         - name: read-keycloak-client-secrets
           image: {{ .Values.keycloak.adminImage | quote }}
           imagePullPolicy: IfNotPresent
@@ -202,18 +169,30 @@ spec:
             - |
               export HOME=/tmp/kcadm
               mkdir -p "${HOME}"
-              /opt/bitnami/keycloak/bin/kcadm.sh config credentials \
-                --server "${KEYCLOAK_URL}" --realm master --user admin --password "${KEYCLOAK_PASSWORD}" >/dev/null
-              for client in argocd grafana awx; do
-                client_id="$(/opt/bitnami/keycloak/bin/kcadm.sh get clients -r {{ .Values.keycloak.realm | quote }} -q clientId="${client}" \
-                  | sed -n 's/.*"id" *: *"\([^"]*\)".*/\1/p' | head -n1)"
-                test -n "${client_id}"
-                /opt/bitnami/keycloak/bin/kcadm.sh get "clients/${client_id}/client-secret" -r {{ .Values.keycloak.realm | quote }} \
-                  | sed -n 's/.*"value" *: *"\([^"]*\)".*/\1/p' > "/work/${client}"
-                test -s "/work/${client}"
+              for attempt in $(seq 1 60); do
+                if /opt/bitnami/keycloak/bin/kcadm.sh config credentials \
+                  --server "${KEYCLOAK_URL}" --realm master --user admin --password "${KEYCLOAK_PASSWORD}" >/dev/null 2>&1; then
+                  ready=true
+                  for client in argocd grafana awx; do
+                    client_id="$(/opt/bitnami/keycloak/bin/kcadm.sh get clients -r {{ .Values.keycloak.realm | quote }} -q clientId="${client}" \
+                      | sed -n 's/.*"id" *: *"\([^"]*\)".*/\1/p' | head -n1)"
+                    if [ -z "${client_id}" ]; then
+                      ready=false
+                      break
+                    fi
+                    /opt/bitnami/keycloak/bin/kcadm.sh get "clients/${client_id}/client-secret" -r {{ .Values.keycloak.realm | quote }} \
+                      | sed -n 's/.*"value" *: *"\([^"]*\)".*/\1/p' > "/work/${client}"
+                    test -s "/work/${client}" || ready=false
+                  done
+                  if [ "${ready}" = true ]; then
+                    chmod 0640 /work/argocd /work/grafana /work/awx
+                    touch /work/ready
+                    exit 0
+                  fi
+                fi
+                sleep 1
               done
-              chmod 0640 /work/argocd /work/grafana /work/awx
-              touch /work/ready
+              exit 1
           env:
             - name: KEYCLOAK_URL
               value: {{ .Values.keycloak.internalUrl | quote }}
@@ -225,6 +204,8 @@ spec:
           volumeMounts:
             - name: oidc-client-secrets
               mountPath: /work
+        # Vault token은 이 Job의 ServiceAccount JWT로만 발급되며, policy는
+        # monitoring/oidc 경로의 읽기·쓰기로 제한한다.
         - name: write-vault
           image: {{ .Values.keycloak.vaultImage | quote }}
           imagePullPolicy: IfNotPresent
@@ -251,3 +232,10 @@ spec:
           volumeMounts:
             - name: oidc-client-secrets
               mountPath: /work
+      volumes:
+        - name: realm
+          configMap:
+            name: keycloak-realm-config
+        - name: oidc-client-secrets
+          emptyDir:
+            medium: Memory
