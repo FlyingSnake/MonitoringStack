@@ -96,6 +96,15 @@ vault write auth/kubernetes/role/monitoring-stack \
   policies=monitoring-stack \
   ttl=1h >/dev/null
 
+vault policy write keycloak-config - <<'POLICY'
+path "monitoring/data/oidc" { capabilities = ["create", "read", "update"] }
+POLICY
+vault write auth/kubernetes/role/keycloak-config \
+  bound_service_account_names=keycloak-config \
+  bound_service_account_namespaces=keycloak \
+  policies=keycloak-config \
+  ttl=1h >/dev/null
+
 vault policy write cert-manager-issuer - <<'POLICY'
 path "pki_int/sign/monitoring-server" { capabilities = ["update"] }
 POLICY
