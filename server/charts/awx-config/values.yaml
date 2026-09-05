@@ -28,6 +28,18 @@ awx:
     ALLOY_TLS_CA_FILE: /etc/alloy/credentials/ca.crt
     ALLOY_TLS_CERT_FILE: /etc/alloy/credentials/tls.crt
     ALLOY_TLS_KEY_FILE: /etc/alloy/credentials/tls.key
+  # Windows Alloy 서비스는 같은 수집 endpoint를 사용하되 인증서 파일 경로만
+  # Windows 경로로 전달한다.
+  alloyWindowsEnvironment:
+    LOKI_URL: https://loki.ingest.dev.example.internal/loki/api/v1/push
+    MIMIR_REMOTE_WRITE_URL: https://mimir.ingest.dev.example.internal/api/v1/push
+    MONITORING_CLUSTER: dev
+    MONITORING_ENVIRONMENT: dev
+    PYROSCOPE_URL: https://pyroscope.ingest.dev.example.internal
+    TEMPO_OTLP_HTTP_ENDPOINT: https://tempo.ingest.dev.example.internal
+    ALLOY_TLS_CA_FILE: C:/ProgramData/GrafanaLabs/Alloy/credentials/ca.crt
+    ALLOY_TLS_CERT_FILE: C:/ProgramData/GrafanaLabs/Alloy/credentials/tls.crt
+    ALLOY_TLS_KEY_FILE: C:/ProgramData/GrafanaLabs/Alloy/credentials/tls.key
   alloyHostAliases: []
   linuxTest:
     enabled: false
@@ -38,3 +50,11 @@ awx:
     port: 2222
     username: alloytest
     credentialSecret: monitoring-linux-test-ssh
+  # 실제 WinRM 대상과 ExternalSecret이 준비된 경우에만 활성화한다. 사용자명과
+  # 비밀번호는 Config Job에 optional Secret으로만 전달되며 Git에 저장하지 않는다.
+  windowsCredential:
+    enabled: false
+    credentialName: MonitoringStack Dev Windows WinRM
+    credentialSecret: monitoring-windows-winrm
+    usernameKey: username
+    passwordKey: password

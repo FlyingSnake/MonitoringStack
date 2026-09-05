@@ -20,3 +20,12 @@
 - 환경 승격은 `dev` 브랜치 → `stg` 브랜치 → `main` 브랜치(운영) 순서입니다. 검토 없이 운영 값을 하위 환경에 복사하지 않습니다.
 
 영역별 추가 규칙은 가장 가까운 하위 `AGENTS.md`를 확인합니다.
+
+## 미검증 항목과 실행 전제
+
+- Windows Alloy은 선언·정적 검사까지 구현되어 있다. 실제 실행 전에는 WinRM 대상, AWX Machine Credential용 ExternalSecret, 신뢰 가능한 CA, Alloy 설치 파일의 공식 SHA-256을 준비하고 설치·업그레이드·서비스 재시작·Event Log·수집을 검증한다.
+- 로컬 Linux 검증 fixture는 Docker 기반 systemd/SSH 컨테이너다. 실제 배포 전에는 대상 OS 배포판, kernel, SELinux/AppArmor, 프록시·DNS, eBPF 권한을 포함한 실제 Linux 호스트에서 재검증한다.
+- ARM64 .NET은 프로파일러 wrapper가 없는 경우 로그·메트릭·트레이스만 수집하도록 설계되어 있다. 해당 아키텍처의 프로파일 수집은 지원 artifact가 준비된 뒤 별도로 검증한다.
+- 브라우저 OIDC 로그인은 로컬 CA를 신뢰하는 브라우저와 테스트 계정이 준비되기 전까지 `curl --cacert` 기반 HTTPS·OIDC discovery·API 검증만 수행한다.
+- `stg`/`prd`는 EKS Gateway, KMS, IRSA, 외부 S3/Kafka와 실제 도메인 입력이 없으면 Sync하지 않는다. `make preflight-server ENV=stg|prd`가 모든 계약값을 통과한 뒤에만 수동 Sync한다.
+- Kind 단일 노드·최소 복제본 검증은 HA, 장애조치, 부하·내구성, 백업·복구, 보존·수명주기 검증을 대체하지 않는다. 운영 전 별도 환경에서 이 항목들을 수행한다.

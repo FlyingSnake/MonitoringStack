@@ -81,6 +81,33 @@
   no_log: true
   notify: Alloy 서비스 재시작
 
+- name: Windows Alloy credential 파일 상속 ACL 제거
+  ansible.windows.win_acl_inheritance:
+    path: "{{ item }}"
+    reorganize: true
+    state: absent
+  loop:
+    - "{{ alloy_credentials_path }}\\ca.crt"
+    - "{{ alloy_credentials_path }}\\tls.crt"
+    - "{{ alloy_credentials_path }}\\tls.key"
+  no_log: true
+
+- name: Windows Alloy credential 파일의 관리자 및 시스템 권한 설정
+  ansible.windows.win_acl:
+    path: "{{ item.path }}"
+    user: "{{ item.user }}"
+    rights: FullControl
+    type: allow
+    state: present
+  loop:
+    - { path: "{{ alloy_credentials_path }}\\ca.crt", user: "BUILTIN\\Administrators" }
+    - { path: "{{ alloy_credentials_path }}\\ca.crt", user: SYSTEM }
+    - { path: "{{ alloy_credentials_path }}\\tls.crt", user: "BUILTIN\\Administrators" }
+    - { path: "{{ alloy_credentials_path }}\\tls.crt", user: SYSTEM }
+    - { path: "{{ alloy_credentials_path }}\\tls.key", user: "BUILTIN\\Administrators" }
+    - { path: "{{ alloy_credentials_path }}\\tls.key", user: SYSTEM }
+  no_log: true
+
 - name: Windows Alloy 서비스 환경변수 배포
   ansible.windows.win_regedit:
     path: "{{ alloy_credentials_environment_registry_path }}"

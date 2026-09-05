@@ -6,6 +6,9 @@ alloy_config_module_path: agents/alloy/modules/windows/alloy.alloy
 alloy_config_pull_frequency: 5m
 alloy_install_dir: C:\\Program Files\\GrafanaLabs\\Alloy
 alloy_installer_url: "https://github.com/grafana/alloy/releases/download/v{{ alloy_version }}/alloy-installer-windows-amd64.exe"
+# 실제 Windows 배포 전 해당 릴리스의 공식 SHA-256을 주입한다. 비어 있으면
+# win_package는 버전 고정 URL만 사용하며, 이 기본값에는 검증되지 않은 해시를 넣지 않는다.
+alloy_installer_checksum: ""
 alloy_credentials_path: C:\\ProgramData\\GrafanaLabs\\Alloy\\credentials
 alloy_credentials_environment_registry_path: HKLM:\\SYSTEM\\CurrentControlSet\\Services\\Alloy
 alloy_environment:

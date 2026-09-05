@@ -1,9 +1,9 @@
-.PHONY: validate helm-template yaml-check ansible-check ansible-check-container preflight-server local-status local-ui-api-smoke local-k8s-alloy-smoke local-linux-alloy-smoke local-telemetry-smoke local-telemetry-clean
+.PHONY: validate helm-template yaml-check ansible-check ansible-check-container windows-contract-check preflight-server local-status local-ui-api-smoke local-k8s-alloy-smoke local-linux-alloy-smoke local-telemetry-smoke local-telemetry-clean
 
 ENV ?=
 OVERLAY ?=
 
-validate: yaml-check helm-template ansible-check
+validate: yaml-check helm-template ansible-check windows-contract-check
 
 yaml-check:
 	./scripts/validate.sh yaml
@@ -16,6 +16,9 @@ ansible-check:
 
 ansible-check-container:
 	./scripts/validate-ansible-container.sh
+
+windows-contract-check:
+	./scripts/validate-windows-contract.sh
 
 preflight-server:
 	@test -n "$(ENV)" || (echo "usage: make preflight-server ENV=dev|stg|prd [OVERLAY=path/to/values.yaml]" >&2; exit 2)

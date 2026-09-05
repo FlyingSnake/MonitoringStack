@@ -1,0 +1,10 @@
+---
+# 운영 인증 방식은 승인된 host_vars/ExternalSecret 계약으로만 주입한다.
+# TLS 인증서 검증을 disable로 변경하지 않는다.
+ansible_connection: winrm
+ansible_port: 5986
+ansible_winrm_scheme: https
+ansible_winrm_transport: ntlm
+ansible_winrm_server_cert_validation: validate
+ansible_winrm_operation_timeout_sec: 60
+ansible_winrm_read_timeout_sec: 70

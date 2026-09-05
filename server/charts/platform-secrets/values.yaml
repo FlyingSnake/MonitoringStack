@@ -7,3 +7,6 @@ vault:
   role: monitoring-stack
 gatewaySecretNamespace: gateway-system
 externalSecrets: []
+# 환경별로 추가하는 선택적 Secret 계약이다. 예: 실제 Windows WinRM 대상의
+# Machine Credential. 기본 ExternalSecret 목록을 복제하지 않고 환경 values에서만 추가한다.
+additionalExternalSecrets: []
