@@ -12,6 +12,10 @@ applications:
           enabled: true
         dataStorage: { enabled: true, size: 10Gi }
         auditStorage: { enabled: true, size: 10Gi }
+  keycloak:
+    values:
+      extraEnvVars:
+        - { name: KC_HOSTNAME, value: "https://keycloak.dev.example.internal" }
   platform-identity:
     values:
       keycloak:

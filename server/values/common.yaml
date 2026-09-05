@@ -136,6 +136,13 @@ applications:
     source: { type: helm, repoURL: "https://charts.bitnami.com/bitnami", chart: keycloak, targetRevision: 25.2.0 }
     values:
       image: { repository: bitnamilegacy/keycloak }
+      # TLS는 Gateway에서 종료한다. Keycloak은 외부 HTTPS URL과 X-Forwarded
+      # 헤더를 사용해 OIDC issuer/endpoint를 생성해야 한다.
+      production: true
+      proxyHeaders: xforwarded
+      httpEnabled: true
+      extraEnvVars:
+        - { name: KC_HOSTNAME, value: "https://keycloak.dev.example.internal" }
       auth: { adminUser: admin, existingSecret: keycloak-admin, passwordSecretKey: admin-password }
       postgresql:
         enabled: true
