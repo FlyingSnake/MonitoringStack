@@ -39,7 +39,9 @@ spec:
   syncPolicy:
     syncOptions:
       - CreateNamespace=true
+      {{- if or (not (hasKey $app "serverSideApply")) $app.serverSideApply }}
       - ServerSideApply=true
+      {{- end }}
       {{- range $app.syncOptions }}
       - {{ . | quote }}
       {{- end }}
