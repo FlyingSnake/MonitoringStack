@@ -13,5 +13,5 @@
 
 - `stg`/`prd`는 실제 EKS API CIDR, Gateway/listener, base domain, Vault AWS KMS key ARN, IRSA role ARN, 외부 S3 bucket 및 Kafka/Redpanda endpoint가 주입되기 전에는 Argo CD Sync를 수행하지 않습니다. 수동 Sync 직전에 `make preflight-server ENV=stg|prd`를 실행합니다.
 - Kind는 최소 복제본과 임시 Vault 상태를 사용하는 개발 검증 환경이다. Vault HA·KMS auto-unseal, S3/Kafka 장애, 백엔드 복제/zone-aware 구성, 백업·복구, 보존·수명주기, 부하·장시간 soak test는 실제 환경에서 별도 검증합니다.
-- 로컬 브라우저 OIDC는 신뢰된 CA와 테스트 계정이 준비되기 전까지 UI 로그인 검증 대상이 아니다. HTTPS redirect, Keycloak discovery, Grafana/AWX/Argo CD API 및 Gateway 인증 정책은 `curl --cacert`로만 검증합니다.
+- 브라우저 OIDC는 Let's Encrypt 인증서가 적용된 실제 도메인과 테스트 계정이 준비되기 전까지 UI 로그인 검증 대상이 아니다. 그 전에는 HTTPS redirect, Keycloak discovery, Grafana/AWX/Argo CD API 및 Gateway 인증 정책만 검증합니다.
 - Gateway mTLS·Basic Auth와 Vault PKI 단기 인증서의 실제 갱신·폐기·장애 복구 절차는 운영 Vault/CA와 실제 agent 대상에서 검증해야 합니다.
