@@ -43,22 +43,6 @@ spec:
   service:
     spec:
       type: ClusterIP
-{{- range .Values.grafana.folders }}
----
-apiVersion: grafana.integreatly.org/v1beta1
-kind: GrafanaFolder
-metadata:
-  name: {{ .name }}
-  namespace: grafana
-  annotations:
-    argocd.argoproj.io/sync-wave: "0"
-spec:
-  instanceSelector:
-    matchLabels:
-      dashboards: grafana
-  title: {{ .title | quote }}
-  uid: {{ .uid | quote }}
-{{- end }}
 {{- range .Values.grafana.dashboards }}
 ---
 apiVersion: grafana.integreatly.org/v1beta1
@@ -72,7 +56,12 @@ spec:
   instanceSelector:
     matchLabels:
       dashboards: grafana
+  {{- if .folderRef }}
   folderRef: {{ .folderRef | quote }}
+  {{- end }}
+  {{- if .folderUID }}
+  folderUID: {{ .folderUID | quote }}
+  {{- end }}
   uid: {{ .uid | quote }}
   json: |
     {{- toJson .definition | nindent 4 }}
