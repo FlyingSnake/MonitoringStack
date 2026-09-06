@@ -75,7 +75,6 @@ applications:
         - name: allow-kubernetes-api-to-mimir-rollout
           namespace: monitoring-stack-server
           podSelector: { app.kubernetes.io/instance: mimir, app.kubernetes.io/name: rollout-operator }
-          apiServerCidrs: [172.18.0.3/32]
           port: 8443
   platform-secrets:
     values:

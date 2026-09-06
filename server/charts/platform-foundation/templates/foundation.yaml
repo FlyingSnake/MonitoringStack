@@ -8,7 +8,8 @@ metadata:
     app.kubernetes.io/part-of: monitoring-stack
 {{- end }}
 {{- range .Values.admissionWebhooks }}
-{{- if .apiServerCidrs }}
+{{- $webhookApiServerCidrs := .apiServerCidrs | default $.Values.apiServerCidrs }}
+{{- if $webhookApiServerCidrs }}
 ---
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
@@ -23,7 +24,7 @@ spec:
     - Ingress
   ingress:
     - from:
-{{- range .apiServerCidrs }}
+{{- range $webhookApiServerCidrs }}
         - ipBlock:
             cidr: {{ . }}
 {{- end }}

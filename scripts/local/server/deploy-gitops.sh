@@ -12,6 +12,13 @@ if [[ ! -f "${runtime_dir}/server/values.yaml" ]]; then
 fi
 
 kubectl config use-context "kind-${cluster_name}"
+api_service_ip="$(kubectl -n default get service kubernetes -o jsonpath='{.spec.clusterIP}')"
+api_endpoint_ip="$(kubectl -n default get endpoints kubernetes -o jsonpath='{.subsets[0].addresses[0].ip}')"
+if [[ -z "${api_service_ip}" || -z "${api_endpoint_ip}" ]]; then
+  echo "Kubernetes API Service 또는 endpoint IP를 확인할 수 없습니다." >&2
+  exit 1
+fi
+api_server_cidrs="$(jq -cn --arg service "${api_service_ip}" --arg endpoint "${api_endpoint_ip}" '[($service + "/32"), ($endpoint + "/32")]')"
 "${repo_root}/bootstrap/install-external-secrets-crds.sh"
 helm repo add argo https://argoproj.github.io/argo-helm >/dev/null 2>&1 || true
 helm repo update argo >/dev/null
@@ -33,6 +40,7 @@ helm template monitoring-platform-local "${repo_root}/server/charts/platform-app
   --values "${repo_root}/server/values/common.yaml" \
   --values "${repo_root}/server/env/dev/values.yaml" \
   --values "${runtime_dir}/server/values.yaml" \
+  --set-json "applications.platform-foundation.values.apiServerCidrs=${api_server_cidrs}" \
   | kubectl apply --server-side --force-conflicts -f -
 
 echo "Argo CD Applications are intentionally left in manual Sync mode:"
