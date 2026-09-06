@@ -18,7 +18,7 @@ Vault 자체는 GitOps로 설치하지만 다음 작업은 root token 또는 rec
 
 1. Vault를 초기화한다. dev는 Unseal key를 Git 외부의 비밀 저장소에 보관한다.
 2. Kubernetes Auth를 활성화하고 External Secrets용 `monitoring-stack` role을 만든다.
-3. KV v2 mount `monitoring/`과 PKI mount `pki_int/`를 만들고, cert-manager 및 AWX용 PKI role을 만든다.
+3. KV v2 mount `monitoring/`을 만들고, Gateway TLS를 Vault Issuer로 운영하는 환경에서는 cert-manager용 PKI mount와 role을 추가한다.
 4. 아래 key를 입력한 뒤 ExternalSecret이 `Ready` 상태인지 확인한다.
 
 ## 필수 KV 경로
@@ -31,9 +31,8 @@ Vault 자체는 GitOps로 설치하지만 다음 작업은 root token 또는 rec
 | `monitoring/minio` | 각 backend `object-storage-credentials` | `access-key-id`, `secret-access-key` |
 | `monitoring/awx` | `awx/awx-admin` | `admin-password` |
 | `monitoring/ingestion` | 각 backend `ingestion-basic-auth` | `htpasswd` |
-| `monitoring/pki` | Gateway `monitoring-ingest-ca` | `ingest-ca-crt` |
 
-`ingestion.htpasswd`는 Envoy Gateway Basic Auth가 요구하는 SHA htpasswd 형식이다. Alloy에 제공하는 평문 사용자·암호와 PKI client certificate는 AWX credential/Vault PKI role로만 배포하며 Git에 저장하지 않는다.
+`ingestion.htpasswd`는 Envoy Gateway Basic Auth가 요구하는 SHA htpasswd 형식이다. Alloy에 제공하는 평문 사용자·암호는 AWX credential/Vault KV로만 배포하며 Git에 저장하지 않는다.
 
 로컬 Vault bootstrap 스크립트도 같은 SHA 형식을 생성한다. BCrypt 형식은 Envoy Gateway SecurityPolicy에서 지원하지 않으므로 사용하지 않는다.
 
@@ -42,7 +41,7 @@ Vault 자체는 GitOps로 설치하지만 다음 작업은 root token 또는 rec
 기존 Gateway는 두 HTTPS listener를 제공해야 합니다.
 
 - `ui-https`: Grafana, Argo CD, Keycloak, AWX의 OIDC 브라우저 트래픽
-- `ingest-https`: `*.ingest.<env>.<baseDomain>`의 Alloy 수집 트래픽. Envoy Gateway mTLS와 HTTP Basic Auth를 모두 적용
+- `ingest-https`: `*.ingest.<env>.<baseDomain>`의 Alloy 수집 트래픽. Envoy Gateway HTTPS 서버 인증서와 HTTP Basic Auth를 적용
 
 UI HTTP 요청을 HTTPS로 전환하려면 Gateway에 HTTP listener를 추가하고 해당 이름을 `gateway.httpListener`에 설정한다. `gateway.uiHttpRedirect.enabled: true`이면 UI route마다 동일 hostname의 HTTPRoute가 생성되어 경로와 query string을 유지한 채 HTTPS `301`로 리다이렉트한다. 기존 Gateway에 HTTP listener가 없는 환경에서는 이 플래그를 `false`로 유지한다.
 

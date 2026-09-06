@@ -117,7 +117,6 @@ vault write auth/kubernetes/role/cert-manager-issuer \
 if kubectl -n awx get serviceaccount monitoring-awx >/dev/null 2>&1; then
   vault policy write awx-agent - <<'POLICY'
 path "monitoring/data/ingestion" { capabilities = ["read"] }
-path "pki_int/issue/monitoring-client" { capabilities = ["update"] }
 POLICY
   vault write auth/kubernetes/role/awx-agent \
     bound_service_account_names=monitoring-awx \
@@ -126,12 +125,6 @@ POLICY
     ttl=1h >/dev/null
 else
   echo "AWX ServiceAccount가 아직 없어 awx-agent Vault role 설정을 건너뜁니다."
-fi
-
-if vault read pki_int/cert/ca >/dev/null 2>&1; then
-  vault write pki_int/roles/monitoring-client \
-    allow_any_name=true \
-    max_ttl=168h >/dev/null
 fi
 
 if [[ ! -f "${seed_marker}" ]]; then
@@ -149,9 +142,6 @@ if [[ ! -f "${seed_marker}" ]]; then
     allow_subdomains=true \
     allow_bare_domains=true \
     max_ttl=720h >/dev/null
-  vault write pki_int/roles/monitoring-client \
-    allow_any_name=true \
-    max_ttl=168h >/dev/null
 else
   echo "Vault 초기 seed가 존재합니다. 기존 Kubernetes Secret을 기준으로 자격증명 계약을 다시 확인합니다. State: ${state_dir}"
 fi
@@ -233,16 +223,7 @@ vault kv put monitoring/ingestion \
   htpasswd="${htpasswd_entry}" \
   username="${ingestion_username}" \
   password="${ingestion_password}" >/dev/null
-vault kv put monitoring/pki ingest-ca-crt="$(vault read -field=certificate pki_int/cert/ca)" >/dev/null
-
-vault write -format=json pki_int/issue/monitoring-client common_name=local-alloy ttl=24h > "${state_dir}/alloy-client.json"
-ruby -rjson -e '
-  data = JSON.parse(File.read(ARGV[0])).fetch("data")
-  File.write(ARGV[1], data.fetch("certificate"))
-  File.write(ARGV[2], data.fetch("private_key"))
-  File.write(ARGV[3], data.fetch("issuing_ca"))
-' "${state_dir}/alloy-client.json" "${state_dir}/alloy-client.crt" "${state_dir}/alloy-client.key" "${state_dir}/ca.crt"
-chmod 600 "${state_dir}/alloy-client.key" "${state_dir}/init.json"
+chmod 600 "${state_dir}/init.json"
 touch "${seed_marker}"
 
-echo "Vault bootstrap completed. Local client certificate and ingestion credentials are in ${state_dir}."
+echo "Vault bootstrap completed. Basic Auth ingestion credentials are in ${state_dir}."

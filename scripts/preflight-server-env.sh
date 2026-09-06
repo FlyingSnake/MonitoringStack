@@ -54,10 +54,8 @@ ruby -ryaml -e '
     abort("Local demo UI hosts do not match the Lets Encrypt wildcard contract") unless tls.fetch("uiDnsNames").sort == expected_ui.sort
     abort("Local demo ingest hosts do not match the Lets Encrypt wildcard contract") unless tls.fetch("ingestDnsNames").sort == expected_ingest.sort
     abort("Local demo must use externally managed Lets Encrypt TLS Secrets") unless tls["managedByCertManager"] == false
-    expected_ingest_listeners = %w[loki mimir tempo pyroscope].map { |name| "#{name}-ingest-https" }
-    abort("Local demo ingest listeners are incomplete") unless gateway.fetch("ingestListeners").sort == expected_ingest_listeners.sort
     abort("Local demo UI routes must bind to explicit TLS listeners") unless gateway.fetch("uiRoutes").all? { |route| route["listener"].to_s.end_with?("-ui-https") }
-    abort("Local demo ingest routes must bind to explicit mTLS listeners") unless gateway.fetch("ingestionRoutes").all? { |route| route["listener"].to_s.end_with?("-ingest-https") }
+    abort("Local demo ingest routes must bind to explicit HTTPS listeners") unless gateway.fetch("ingestionRoutes").all? { |route| route["listener"].to_s.end_with?("-ingest-https") }
   else
     expected_fragment = ".#{environment}."
     abort("Gateway DNS names do not match #{environment} environment") unless hosts.all? { |host| host.include?(expected_fragment) }

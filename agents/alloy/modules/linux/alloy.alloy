@@ -13,11 +13,6 @@ declare "pipeline" {
 
 	argument "ingest_password" { }
 
-	argument "tls_ca_file" { }
-
-	argument "tls_cert_file" { }
-
-	argument "tls_key_file" { }
 
 	argument "monitoring_environment" { }
 
@@ -30,11 +25,6 @@ declare "pipeline" {
 				password = argument.ingest_password.value
 			}
 
-			tls_config {
-				ca_file   = argument.tls_ca_file.value
-				cert_file = argument.tls_cert_file.value
-				key_file  = argument.tls_key_file.value
-			}
 		}
 		external_labels = {
 			environment = argument.monitoring_environment.value,
@@ -66,11 +56,6 @@ declare "pipeline" {
 				password = argument.ingest_password.value
 			}
 
-			tls_config {
-				ca_file   = argument.tls_ca_file.value
-				cert_file = argument.tls_cert_file.value
-				key_file  = argument.tls_key_file.value
-			}
 		}
 		external_labels = {
 			environment = argument.monitoring_environment.value,
@@ -99,11 +84,6 @@ declare "pipeline" {
 			endpoint = argument.tempo_otlp_http_endpoint.value
 			auth     = otelcol.auth.basic.ingest.handler
 
-			tls {
-				ca_file   = argument.tls_ca_file.value
-				cert_file = argument.tls_cert_file.value
-				key_file  = argument.tls_key_file.value
-			}
 		}
 	}
 
@@ -116,11 +96,6 @@ declare "pipeline" {
 				password = argument.ingest_password.value
 			}
 
-			tls_config {
-				ca_file   = argument.tls_ca_file.value
-				cert_file = argument.tls_cert_file.value
-				key_file  = argument.tls_key_file.value
-			}
 		}
 		external_labels = {
 			environment = argument.monitoring_environment.value,

@@ -19,9 +19,5 @@ gateway:
     ingestSecretName: monitoring-ingest-tls
     uiDnsNames: []
     ingestDnsNames: []
-  mtlsCaSecret: monitoring-ingest-ca
-  # 하나의 수집 listener만 쓰는 환경은 비워 둔다. 값이 있으면 listener마다
-  # 별도 ClientTrafficPolicy를 만들어 mTLS를 강제한다.
-  ingestListeners: []
   uiRoutes: []
   ingestionRoutes: []

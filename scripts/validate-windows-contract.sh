@@ -24,7 +24,6 @@ for environment in dev stg prd; do
       failures << "endpoints.#{endpoint}" unless value.start_with?("https://") && value.include?(".ingest.#{environment}.")
     end
     failures << "security.authSecretRef" if values.dig("security", "authSecretRef").to_s.empty?
-    failures << "security.tlsSecretRef" if values.dig("security", "tlsSecretRef").to_s.empty?
     %w[logs metrics traces].each do |feature|
       failures << "features.#{feature}" unless values.dig("features", feature) == true
     end
@@ -67,8 +66,9 @@ done
 
 rg -q 'ansible\.windows\.win_package' agents/ansible/roles/grafana_alloy_windows/tasks/main.yaml
 rg -q 'ansible\.windows\.win_service' agents/ansible/roles/grafana_alloy_windows/tasks/main.yaml
-rg -q 'ansible\.windows\.win_acl_inheritance' agents/ansible/roles/grafana_alloy_windows_credentials/tasks/main.yaml
-rg -q 'pki_int/issue/monitoring-client' agents/ansible/roles/grafana_alloy_windows_credentials/defaults/main.yaml
+rg -q 'ansible\.windows\.win_regedit' agents/ansible/roles/grafana_alloy_windows_credentials/tasks/main.yaml
+rg -q 'INGEST_USERNAME' agents/ansible/roles/grafana_alloy_windows_credentials/tasks/main.yaml
+! rg -q 'pki_int/issue/monitoring-client' agents/ansible/roles/grafana_alloy_windows_credentials
 rg -q 'import\.git' agents/ansible/roles/grafana_alloy_windows/templates/config.alloy.j2
 rg -q 'EventLog|eventlog' agents/alloy/modules/windows/alloy.alloy
 rg -q 'alloyWindowsEnvironment' server/charts/awx-config/templates/config.yaml

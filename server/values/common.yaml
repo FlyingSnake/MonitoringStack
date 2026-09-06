@@ -125,7 +125,6 @@ applications:
         - { name: object-storage-credentials, namespace: pyroscope, targetSecret: object-storage-credentials, keys: [{ secretKey: AWS_ACCESS_KEY_ID, remoteKey: object-storage, property: access-key-id }, { secretKey: AWS_SECRET_ACCESS_KEY, remoteKey: object-storage, property: secret-access-key }] }
         - { name: awx-admin, namespace: awx, targetSecret: awx-admin, keys: [{ secretKey: password, remoteKey: awx, property: admin-password }] }
         - { name: oidc-client-secrets, namespace: awx, targetSecret: oidc-client-secrets, keys: [{ secretKey: awx-client-secret, remoteKey: oidc, property: awx-client-secret }] }
-        - { name: monitoring-ingest-ca, gatewaySecret: true, targetSecret: monitoring-ingest-ca, keys: [{ secretKey: ca.crt, remoteKey: pki, property: ingest-ca-crt }] }
         - { name: ingestion-basic-auth, namespace: loki, targetSecret: ingestion-basic-auth, keys: [{ secretKey: .htpasswd, remoteKey: ingestion, property: htpasswd }] }
         - { name: ingestion-basic-auth, namespace: monitoring-stack-server, targetSecret: ingestion-basic-auth, keys: [{ secretKey: .htpasswd, remoteKey: ingestion, property: htpasswd }] }
         - { name: ingestion-basic-auth, namespace: pyroscope, targetSecret: ingestion-basic-auth, keys: [{ secretKey: .htpasswd, remoteKey: ingestion, property: htpasswd }] }
@@ -451,7 +450,6 @@ applications:
           ingestSecretName: monitoring-ingest-tls
           uiDnsNames: [grafana.dev.example.internal, argocd.dev.example.internal, keycloak.dev.example.internal, awx.dev.example.internal]
           ingestDnsNames: [loki.ingest.dev.example.internal, mimir.ingest.dev.example.internal, tempo.ingest.dev.example.internal, pyroscope.ingest.dev.example.internal]
-        mtlsCaSecret: monitoring-ingest-ca
         uiRoutes:
           - { name: grafana, namespace: grafana, hostname: grafana.dev.example.internal, service: grafana-service, port: 3000 }
           - { name: keycloak, namespace: keycloak, hostname: keycloak.dev.example.internal, service: keycloak, port: 80 }
@@ -493,7 +491,7 @@ applications:
         image: "quay.io/ansible/awx-ee:24.6.1"
         repository: "https://github.com/FlyingSnake/MonitoringStack.git"
         revision: dev
-        vault: { server: "http://vault.vault.svc.cluster.local:8200", role: awx-agent, pkiPath: pki_int/issue/monitoring-client, ingestionPath: monitoring/data/ingestion }
+        vault: { server: "http://vault.vault.svc.cluster.local:8200", role: awx-agent, ingestionPath: monitoring/data/ingestion }
         alloyEnvironment:
           LOKI_URL: "https://loki.ingest.dev.example.internal/loki/api/v1/push"
           MIMIR_REMOTE_WRITE_URL: "https://mimir.ingest.dev.example.internal/api/v1/push"
@@ -501,9 +499,6 @@ applications:
           MONITORING_ENVIRONMENT: dev
           PYROSCOPE_URL: "https://pyroscope.ingest.dev.example.internal"
           TEMPO_OTLP_HTTP_ENDPOINT: "https://tempo.ingest.dev.example.internal"
-          ALLOY_TLS_CA_FILE: /etc/alloy/credentials/ca.crt
-          ALLOY_TLS_CERT_FILE: /etc/alloy/credentials/tls.crt
-          ALLOY_TLS_KEY_FILE: /etc/alloy/credentials/tls.key
         alloyWindowsEnvironment:
           LOKI_URL: "https://loki.ingest.dev.example.internal/loki/api/v1/push"
           MIMIR_REMOTE_WRITE_URL: "https://mimir.ingest.dev.example.internal/api/v1/push"
@@ -511,7 +506,4 @@ applications:
           MONITORING_ENVIRONMENT: dev
           PYROSCOPE_URL: "https://pyroscope.ingest.dev.example.internal"
           TEMPO_OTLP_HTTP_ENDPOINT: "https://tempo.ingest.dev.example.internal"
-          ALLOY_TLS_CA_FILE: C:/ProgramData/GrafanaLabs/Alloy/credentials/ca.crt
-          ALLOY_TLS_CERT_FILE: C:/ProgramData/GrafanaLabs/Alloy/credentials/tls.crt
-          ALLOY_TLS_KEY_FILE: C:/ProgramData/GrafanaLabs/Alloy/credentials/tls.key
         alloyHostAliases: []

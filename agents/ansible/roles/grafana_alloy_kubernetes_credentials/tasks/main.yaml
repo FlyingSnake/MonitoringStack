@@ -35,21 +35,6 @@
   register: alloy_ingestion_credentials
   no_log: true
 
-- name: Alloy 대상별 단기 mTLS 인증서 발급
-  ansible.builtin.uri:
-    url: "{{ vault_addr }}/v1/{{ vault_pki_issue_path }}"
-    method: POST
-    headers:
-      X-Vault-Token: "{{ alloy_vault_login.json.auth.client_token }}"
-    body_format: json
-    body:
-      common_name: "alloy-{{ monitoring_environment }}-{{ inventory_hostname }}"
-      ttl: 24h
-    return_content: true
-    validate_certs: "{{ vault_validate_certs }}"
-  register: alloy_client_certificate
-  no_log: true
-
 - name: Kubernetes Alloy 수집 인증 Secret 적용
   kubernetes.core.k8s:
     state: present
@@ -63,8 +48,5 @@
       stringData:
         INGEST_USERNAME: "{{ alloy_ingestion_credentials.json.data.data.username }}"
         INGEST_PASSWORD: "{{ alloy_ingestion_credentials.json.data.data.password }}"
-        ca.crt: "{{ alloy_client_certificate.json.data.issuing_ca }}"
-        tls.crt: "{{ alloy_client_certificate.json.data.certificate }}"
-        tls.key: "{{ alloy_client_certificate.json.data.private_key }}"
   register: alloy_ingest_secret_result
   no_log: true

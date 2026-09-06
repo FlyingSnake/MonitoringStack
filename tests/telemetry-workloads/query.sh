@@ -5,7 +5,7 @@ script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 repo_root="$(cd "${script_dir}/../.." && pwd)"
 state_dir="${repo_root}/local/server/.vault"
 
-if [[ ! -f "${state_dir}/init.json" || ! -f "${state_dir}/alloy-client.crt" ]]; then
+if [[ ! -f "${state_dir}/init.json" ]]; then
   echo "로컬 Vault 인증 자료가 없습니다. local/server/bootstrap-vault.sh를 먼저 실행하세요." >&2
   exit 1
 fi
@@ -18,9 +18,6 @@ gateway_status() {
   local endpoint_path="$2"
   local authentication="$3"
   local args=(--silent --output /dev/null --write-out '%{http_code}' --resolve "${endpoint_host}:443:127.0.0.1")
-  if [[ "${authentication}" == "mtls" || "${authentication}" == "full" ]]; then
-    args+=(--cert "${state_dir}/alloy-client.crt" --key "${state_dir}/alloy-client.key")
-  fi
   if [[ "${authentication}" == "basic" || "${authentication}" == "full" ]]; then
     args+=(--user "alloy:${ingestion_password}")
   fi
@@ -34,8 +31,6 @@ gateway_query() {
 
   curl --silent --show-error --fail \
     --resolve "${endpoint_host}:443:127.0.0.1" \
-    --cert "${state_dir}/alloy-client.crt" \
-    --key "${state_dir}/alloy-client.key" \
     --user "alloy:${ingestion_password}" \
     "https://${endpoint_host}${endpoint_path}" > "${result_file}"
 }
@@ -59,17 +54,12 @@ mimir_result="${work_dir}/mimir.json"
 gateway_query loki-ingest.demo.flyingsnake.xyz '/loki/api/v1/query_range?query=%7Bnamespace%3D%22telemetry-workloads%22%7D&limit=100' "${loki_result}"
 gateway_query mimir-ingest.demo.flyingsnake.xyz '/prometheus/api/v1/query?query=telemetry_workload_heartbeat_total' "${mimir_result}"
 
-[[ "$(gateway_status loki-ingest.demo.flyingsnake.xyz /loki/api/v1/labels full)" == "200" ]]
-[[ "$(gateway_status loki-ingest.demo.flyingsnake.xyz /loki/api/v1/labels mtls)" == "401" ]]
-set +e
-basic_only_status="$(gateway_status loki-ingest.demo.flyingsnake.xyz /loki/api/v1/labels basic)"
-basic_only_exit=$?
-set -e
-[[ "${basic_only_exit}" -ne 0 || "${basic_only_status}" != "200" ]]
+[[ "$(gateway_status loki-ingest.demo.flyingsnake.xyz /loki/api/v1/labels basic)" == "200" ]]
+[[ "$(gateway_status loki-ingest.demo.flyingsnake.xyz /loki/api/v1/labels none)" == "401" ]]
 policy_statuses="$(kubectl get securitypolicies.gateway.envoyproxy.io -A -o jsonpath='{range .items[*]}{range .status.ancestors[0].conditions[?(@.type=="Accepted")]}{.status}{"\n"}{end}{end}')"
 [[ -n "${policy_statuses}" ]]
 ! grep -qv '^True$' <<< "${policy_statuses}"
-echo "Gateway mTLS + Basic Auth regression checks passed."
+echo "Gateway Basic Auth regression checks passed."
 
 ruby -rjson -e '
   data = JSON.parse(File.read(ARGV[0]))

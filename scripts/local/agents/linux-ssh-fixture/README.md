@@ -1,6 +1,6 @@
 # 로컬 Linux Alloy 검증 대상
 
-이 fixture는 AWX가 SSH로 접속해 Linux Alloy를 설치·구성하는 경로를 검증합니다. AWX 실행 Pod는 Vault Kubernetes Auth로 로그인해 수집 Basic Auth와 `monitoring-client` PKI 단기 인증서를 발급받고, 대상의 `/etc/alloy/credentials`에 제한 권한으로 배포합니다. 일회성 SSH 키는 `.state/`와 Kubernetes `awx/monitoring-linux-test-ssh` Secret에만 존재하며 Git에는 저장되지 않습니다. `destroy.sh`는 컨테이너, 전용 프로파일 송신기, Kubernetes Secret, AWX Machine Credential, 로컬 SSH 키를 함께 정리합니다.
+이 fixture는 AWX가 SSH로 접속해 Linux Alloy를 설치·구성하는 경로를 검증합니다. AWX 실행 Pod는 Vault Kubernetes Auth로 로그인해 수집 Basic Auth를 읽고, 대상의 `/etc/alloy/credentials/environment`에 제한 권한으로 배포합니다. 일회성 SSH 키는 `.state/`와 Kubernetes `awx/monitoring-linux-test-ssh` Secret에만 존재하며 Git에는 저장되지 않습니다. `destroy.sh`는 컨테이너, 전용 프로파일 송신기, Kubernetes Secret, AWX Machine Credential, 로컬 SSH 키를 함께 정리합니다.
 
 ```bash
 ./scripts/local/agents/linux-ssh-fixture/create.sh

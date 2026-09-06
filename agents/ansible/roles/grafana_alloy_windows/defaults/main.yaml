@@ -9,7 +9,6 @@ alloy_installer_url: "https://github.com/grafana/alloy/releases/download/v{{ all
 # 실제 Windows 배포 전 해당 릴리스의 공식 SHA-256을 주입한다. 비어 있으면
 # win_package는 버전 고정 URL만 사용하며, 이 기본값에는 검증되지 않은 해시를 넣지 않는다.
 alloy_installer_checksum: ""
-alloy_credentials_path: C:\\ProgramData\\GrafanaLabs\\Alloy\\credentials
 alloy_credentials_environment_registry_path: HKLM:\\SYSTEM\\CurrentControlSet\\Services\\Alloy
 alloy_environment:
   LOKI_URL: https://loki.ingest.dev.example.internal/loki/api/v1/push
@@ -17,6 +16,3 @@ alloy_environment:
   MONITORING_ENVIRONMENT: dev
   PYROSCOPE_URL: https://pyroscope.ingest.dev.example.internal
   TEMPO_OTLP_HTTP_ENDPOINT: https://tempo.ingest.dev.example.internal
-  ALLOY_TLS_CA_FILE: C:/ProgramData/GrafanaLabs/Alloy/credentials/ca.crt
-  ALLOY_TLS_CERT_FILE: C:/ProgramData/GrafanaLabs/Alloy/credentials/tls.crt
-  ALLOY_TLS_KEY_FILE: C:/ProgramData/GrafanaLabs/Alloy/credentials/tls.key

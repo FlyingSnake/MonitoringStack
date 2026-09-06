@@ -14,6 +14,6 @@
 - Windows 인벤토리는 의도적으로 비어 있으며, 실제 WinRM 호스트가 준비될 때까지 플레이북을 실행하지 않습니다. 대상별 주소·인증 방식·서버 인증서 검증은 Inventory와 AWX Machine Credential ExternalSecret으로 주입하고, 사용자명·비밀번호·개인키는 Git에 기록하지 않습니다.
 - 기본 WinRM 연결 계약은 HTTPS(5986)·서버 인증서 검증이다. 도메인 Kerberos 등으로 transport를 바꿔야 하면 승인된 host_vars/환경 overlay에서만 변경하며, `ansible_winrm_server_cert_validation: ignore`를 사용하지 않습니다.
 - Windows AWX Credential은 `awx.windowsCredential.enabled`를 활성화하고 `platform-secrets.additionalExternalSecrets`로 Vault KV의 WinRM `username`·`password`를 `monitoring-windows-winrm` Secret에 동기화한 경우에만 Job Template에 연결됩니다. 실제 적용 전에는 Alloy 설치 파일의 공식 SHA-256을 `alloy_installer_checksum`으로 주입합니다.
-- Windows에서 수행할 후속 검증은 설치/업그레이드 롤백, Alloy Windows Service 재시작, ACL·Registry 환경변수 보호, Windows Event Log·Windows exporter·OTLP 및 mTLS+Basic Auth 수집입니다.
+- Windows에서 수행할 후속 검증은 설치/업그레이드 롤백, Alloy Windows Service 재시작, ACL·Registry 환경변수 보호, Windows Event Log·Windows exporter·OTLP 및 HTTPS+Basic Auth 수집입니다.
 - Linux Docker fixture 검증은 실제 호스트 검증을 대체하지 않습니다. 실제 Linux 대상에서는 배포판, systemd, 권한, 프록시/DNS, eBPF·프로파일링 지원 여부를 확인합니다.
 - .NET ARM64 프로파일러는 지원 wrapper/artifact가 준비될 때까지 graceful fallback만 허용하며, 실제 profile 수집 검증 대상에서 제외합니다.

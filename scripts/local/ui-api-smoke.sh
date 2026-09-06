@@ -5,8 +5,8 @@ script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 repo_root="$(cd "${script_dir}/../.." && pwd)"
 state_dir="${MONITORING_LOCAL_RUNTIME_DIR:-${repo_root}/local}/server/.vault"
 
-if [[ ! -f "${state_dir}/alloy-client.crt" || ! -f "${state_dir}/alloy-client.key" || ! -f "${state_dir}/init.json" ]]; then
-  echo "Local Vault mTLS client materials are unavailable. Run scripts/local/server/bootstrap-vault.sh after syncing Vault." >&2
+if [[ ! -f "${state_dir}/init.json" ]]; then
+  echo "Local Vault bootstrap 자료가 없습니다. Vault Sync 후 scripts/local/server/bootstrap-vault.sh를 실행하세요." >&2
   exit 1
 fi
 
@@ -42,18 +42,12 @@ for endpoint in \
     # The distributor exposes OTLP/HTTP only; an empty JSON request is accepted
     # and proves that the authenticated request reached the OTLP receiver.
     path="/v1/traces"
-    expect_status 200 "https://${host}${path}" --resolve "${host}:443:127.0.0.1" --cert "${state_dir}/alloy-client.crt" --key "${state_dir}/alloy-client.key" --user "alloy:${ingestion_password}" -X POST -H 'Content-Type: application/json' --data '{}'
-    expect_status 401 "https://${host}${path}" --resolve "${host}:443:127.0.0.1" --cert "${state_dir}/alloy-client.crt" --key "${state_dir}/alloy-client.key" -X POST -H 'Content-Type: application/json' --data '{}'
-    unauthenticated=(curl --silent --output /dev/null --max-time 15 --resolve "${host}:443:127.0.0.1" --user "alloy:${ingestion_password}" -X POST -H 'Content-Type: application/json' --data '{}')
+    expect_status 200 "https://${host}${path}" --resolve "${host}:443:127.0.0.1" --user "alloy:${ingestion_password}" -X POST -H 'Content-Type: application/json' --data '{}'
+    expect_status 401 "https://${host}${path}" --resolve "${host}:443:127.0.0.1" -X POST -H 'Content-Type: application/json' --data '{}'
   else
-    expect_status 200 "https://${host}${path}" --resolve "${host}:443:127.0.0.1" --cert "${state_dir}/alloy-client.crt" --key "${state_dir}/alloy-client.key" --user "alloy:${ingestion_password}"
-    expect_status 401 "https://${host}${path}" --resolve "${host}:443:127.0.0.1" --cert "${state_dir}/alloy-client.crt" --key "${state_dir}/alloy-client.key"
-    unauthenticated=(curl --silent --output /dev/null --max-time 15 --resolve "${host}:443:127.0.0.1" --user "alloy:${ingestion_password}")
-  fi
-  if "${unauthenticated[@]}" "https://${host}${path}"; then
-    echo "mTLS was not enforced for ${host}" >&2
-    exit 1
+    expect_status 200 "https://${host}${path}" --resolve "${host}:443:127.0.0.1" --user "alloy:${ingestion_password}"
+    expect_status 401 "https://${host}${path}" --resolve "${host}:443:127.0.0.1"
   fi
 done
 
-echo "UI HTTPS redirects, UI APIs, and ingest mTLS + Basic Auth contracts passed."
+echo "UI HTTPS redirects, UI APIs, and ingest Basic Auth contracts passed."

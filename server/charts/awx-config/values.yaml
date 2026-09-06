@@ -10,7 +10,6 @@ awx:
   vault:
     server: http://vault.vault.svc.cluster.local:8200
     role: awx-agent
-    pkiPath: pki_int/issue/monitoring-client
     ingestionPath: monitoring/data/ingestion
   executionPodSpec:
     apiVersion: v1
@@ -25,11 +24,7 @@ awx:
     MONITORING_ENVIRONMENT: dev
     PYROSCOPE_URL: https://pyroscope.ingest.dev.example.internal
     TEMPO_OTLP_HTTP_ENDPOINT: https://tempo.ingest.dev.example.internal
-    ALLOY_TLS_CA_FILE: /etc/alloy/credentials/ca.crt
-    ALLOY_TLS_CERT_FILE: /etc/alloy/credentials/tls.crt
-    ALLOY_TLS_KEY_FILE: /etc/alloy/credentials/tls.key
-  # Windows Alloy 서비스는 같은 수집 endpoint를 사용하되 인증서 파일 경로만
-  # Windows 경로로 전달한다.
+  # Windows Alloy 서비스는 동일한 HTTPS 수집 endpoint와 Basic Auth를 사용한다.
   alloyWindowsEnvironment:
     LOKI_URL: https://loki.ingest.dev.example.internal/loki/api/v1/push
     MIMIR_REMOTE_WRITE_URL: https://mimir.ingest.dev.example.internal/api/v1/push
@@ -37,9 +32,6 @@ awx:
     MONITORING_ENVIRONMENT: dev
     PYROSCOPE_URL: https://pyroscope.ingest.dev.example.internal
     TEMPO_OTLP_HTTP_ENDPOINT: https://tempo.ingest.dev.example.internal
-    ALLOY_TLS_CA_FILE: C:/ProgramData/GrafanaLabs/Alloy/credentials/ca.crt
-    ALLOY_TLS_CERT_FILE: C:/ProgramData/GrafanaLabs/Alloy/credentials/tls.crt
-    ALLOY_TLS_KEY_FILE: C:/ProgramData/GrafanaLabs/Alloy/credentials/tls.key
   alloyHostAliases: []
   linuxTest:
     enabled: false

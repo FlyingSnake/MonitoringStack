@@ -109,12 +109,10 @@ applications:
         uiListener: grafana-ui-https
         ingestListener: loki-ingest-https
         uiHttpRedirect: { enabled: true, statusCode: 301 }
-        vault: { server: "http://vault.vault.svc.cluster.local:8200", signPath: pki_int/sign/monitoring-server, kubernetesAuthMount: /v1/auth/kubernetes, issuerRole: cert-manager-issuer }
         tls:
           managedByCertManager: false
           uiDnsNames: [grafana.demo.flyingsnake.xyz, argocd.demo.flyingsnake.xyz, keycloak.demo.flyingsnake.xyz, awx.demo.flyingsnake.xyz]
           ingestDnsNames: [loki-ingest.demo.flyingsnake.xyz, mimir-ingest.demo.flyingsnake.xyz, tempo-ingest.demo.flyingsnake.xyz, pyroscope-ingest.demo.flyingsnake.xyz]
-        ingestListeners: [loki-ingest-https, mimir-ingest-https, tempo-ingest-https, pyroscope-ingest-https]
         uiRoutes:
           - { name: grafana, namespace: grafana, hostname: grafana.demo.flyingsnake.xyz, service: grafana-service, port: 3000, listener: grafana-ui-https }
           - { name: keycloak, namespace: keycloak, hostname: keycloak.demo.flyingsnake.xyz, service: keycloak, port: 80, listener: keycloak-ui-https }
@@ -148,10 +146,6 @@ applications:
           PYROSCOPE_URL: https://pyroscope-ingest.demo.flyingsnake.xyz
           TEMPO_OTLP_HTTP_ENDPOINT: https://tempo-ingest.demo.flyingsnake.xyz
           # Let's Encrypt Gateway 인증서는 Alloy의 OS 신뢰 저장소로 검증한다.
-          # ca.crt는 Gateway가 mTLS 클라이언트 인증서를 검증하는 데만 사용한다.
-          ALLOY_TLS_CA_FILE: ""
-          ALLOY_TLS_CERT_FILE: /etc/alloy/credentials/tls.crt
-          ALLOY_TLS_KEY_FILE: /etc/alloy/credentials/tls.key
         alloyWindowsEnvironment:
           LOKI_URL: https://loki-ingest.demo.flyingsnake.xyz/loki/api/v1/push
           MIMIR_REMOTE_WRITE_URL: https://mimir-ingest.demo.flyingsnake.xyz/api/v1/push
@@ -159,9 +153,6 @@ applications:
           MONITORING_ENVIRONMENT: dev
           PYROSCOPE_URL: https://pyroscope-ingest.demo.flyingsnake.xyz
           TEMPO_OTLP_HTTP_ENDPOINT: https://tempo-ingest.demo.flyingsnake.xyz
-          ALLOY_TLS_CA_FILE: ""
-          ALLOY_TLS_CERT_FILE: C:/ProgramData/GrafanaLabs/Alloy/credentials/tls.crt
-          ALLOY_TLS_KEY_FILE: C:/ProgramData/GrafanaLabs/Alloy/credentials/tls.key
         alloyHostAliases:
           - ip: 10.96.190.65
             hostnames:

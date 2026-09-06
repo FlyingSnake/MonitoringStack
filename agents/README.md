@@ -30,9 +30,9 @@ AWX는 이 Git 저장소에서 Project를 동기화합니다. 인벤토리 내�
 
 ## 수집 보안 계약
 
-Alloy의 외부 수집 주소는 UI 주소가 아닌 `*.ingest.<environment>.<baseDomain>` HTTPS 주소를 사용합니다. Loki, Mimir, Tempo OTLP/HTTP, Pyroscope 전송은 모두 Vault PKI가 발급한 클라이언트 인증서와 Vault KV에서 읽은 HTTP Basic Auth 자격증명을 함께 사용합니다.
+Alloy의 외부 수집 주소는 UI 주소가 아닌 `*.ingest.<environment>.<baseDomain>` HTTPS 주소를 사용합니다. Loki, Mimir, Tempo OTLP/HTTP, Pyroscope 전송은 신뢰할 수 있는 Gateway 서버 인증서를 검증하고 Vault KV에서 읽은 HTTP Basic Auth 자격증명을 사용합니다. 수집 클라이언트 인증서는 사용하지 않습니다.
 
-- Kubernetes: AWX Job이 Vault Kubernetes Auth로 로그인해 `alloy-ingest-client` Secret을 생성하고 Alloy DaemonSet에 마운트합니다.
+- Kubernetes: AWX Job이 Vault Kubernetes Auth로 로그인해 `alloy-ingest-client` Basic Auth Secret을 생성하고 Alloy DaemonSet 환경 변수로 제공합니다.
 - Linux: AWX가 대상의 `/etc/alloy/credentials`에 권한 제한 파일을 설치하고 systemd EnvironmentFile로 제공합니다.
 - Windows: 같은 자격증명 계약을 보호된 파일과 Windows Service 환경 설정으로 구현합니다.
 

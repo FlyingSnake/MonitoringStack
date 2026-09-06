@@ -8,18 +8,19 @@
 | --- | --- |
 | GitOps 기반 | Argo CD bootstrap, AppProject, 환경별 `targetRevision`, local Git daemon 기반 Kind 소스 검증 완료 |
 | 재현 가능한 로컬 검증 | Kind·Gateway·Vault·AWX fixture는 `scripts/local/`, 언어별 워크로드는 `tests/telemetry-workloads/`로 Git 추적. 개인별 values·인증서·키·bare Git 상태는 `local/`에만 보관 |
-| 보안·인증 | Vault, External Secrets, Vault PKI, Gateway UI/수집 listener, 수집 mTLS + HTTP Basic Auth 구현 및 로컬 회귀 검증 완료 |
+| 보안·인증 | Vault, External Secrets, Gateway UI/수집 listener, HTTPS 서버 인증서 + HTTP Basic Auth 전환 구현·정적 검증 완료. 다음 Argo CD 수동 Sync 후 로컬 회귀 검증 대기 |
 | 인증·UI | Keycloak realm/client 선언, Grafana·Argo CD·AWX OIDC 설정 선언 및 Grafana datasource CR 등록 완료 |
 | 저장소·큐 | dev MinIO와 Redpanda, Loki/Mimir/Tempo/Pyroscope의 S3·Kafka 연결 구현 완료 |
 | 관측성 | Grafana Operator, Loki Distributed, Mimir, Tempo, Pyroscope, blackbox exporter, 서버 Alloy를 Kind 단일 복제본으로 검증 완료 |
-| Kubernetes Alloy | AWX → Vault Kubernetes Auth → 단기 인증서/Basic Auth Secret → Alloy DaemonSet 흐름 검증 완료 |
-| Linux Alloy | AWX → SSH fixture → Vault PKI → systemd Alloy 배포와 로그·메트릭·트레이스·프로파일 전송 검증 완료 |
+| Kubernetes Alloy | AWX → Vault Kubernetes Auth → Basic Auth Secret → Alloy DaemonSet 흐름 구현 완료. mTLS 제거 후 런타임 재검증 대기 |
+| Linux Alloy | AWX → SSH fixture → Vault KV → systemd Alloy 배포 흐름 구현 완료. mTLS 제거 후 수집 런타임 재검증 대기 |
 | Windows Alloy | 인벤토리·Job Template·Ansible 역할·Vault credential 계약 구현 및 정적 검증 완료. 실제 WinRM 대상 검증 대기 |
 | .NET 워크로드 | 멀티 아키텍처 초기화와 ARM64 graceful fallback 구현. ARM64 Kind에서 로그·메트릭·트레이스 검증 완료, 프로파일은 wrapper 제공 전까지 보류 |
 | 환경 사전검사 | `make preflight-server ENV=<dev|stg|prd> [OVERLAY=...]`로 Gateway·Vault·S3·Kafka·agent revision 계약을 렌더링 검증. 미치환 `REQUIRED_*`와 `example.internal`은 Sync 전에 거부 |
 
 ### 현재 후속 작업
 
+- Argo CD 수동 Sync 후 Kubernetes·Linux Alloy가 공용 CA로 Gateway 서버 인증서를 검증하고 Basic Auth만으로 수집하는지 재검증한다.
 - 실제 Windows WinRM 대상에서 Alloy 설치·업그레이드와 Event Log 수집을 검증한다.
 - Let's Encrypt 인증서가 적용된 실제 도메인과 테스트 계정을 준비한 뒤 Grafana 브라우저 Keycloak 로그인과 datasource Explore 조회를 수행한다.
 - x86_64 Linux 또는 ARM64 ApiWrapper를 제공하는 Pyroscope .NET profiler 릴리스에서 .NET 프로파일을 검증한다.
@@ -176,7 +177,6 @@ endpoints:
   tempo: https://tempo.example.internal
   pyroscope: https://pyroscope.example.internal
 security:
-  tlsSecretRef: alloy-client-tls
   authSecretRef: alloy-write-credentials
 ```
 
@@ -222,7 +222,7 @@ PR마다 다음을 실행한다.
 4. **관측성 백엔드**: 완료(dev/local). Grafana Operator/Grafana, Loki, Mimir, Tempo, Pyroscope, blackbox와 서버 Alloy를 배포·검증했다.
 5. **AWX**: 완료(dev/local). AWX Operator/AWX CR, 실행 환경, SCM Project, Git inventory, 선언형 Job Template을 구현했다.
 6. **Ansible/Alloy**: Kubernetes와 Linux 실제 검증 완료, Windows는 선언형 구현·정적 검증 완료 상태다.
-7. **보안·운영화**: mTLS·Basic Auth·Vault PKI·기본 NetworkPolicy는 완료했다. Windows 실대상, 백업/복구, retention·alerting/dashboard 확장, 부하·장애 테스트는 후속 작업이다.
+7. **보안·운영화**: HTTPS 서버 인증서·Basic Auth·기본 NetworkPolicy는 완료했다. 수집 클라이언트 mTLS는 사용하지 않는다. Windows 실대상, 백업/복구, retention·alerting/dashboard 확장, 부하·장애 테스트는 후속 작업이다.
 
 ## 9. 구현 전 확정할 운영 입력값
 

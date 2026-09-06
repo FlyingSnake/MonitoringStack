@@ -19,6 +19,3 @@ alloy_environment:
   MONITORING_ENVIRONMENT: dev
   PYROSCOPE_URL: https://pyroscope.ingest.dev.example.internal
   TEMPO_OTLP_HTTP_ENDPOINT: https://tempo.ingest.dev.example.internal
-  ALLOY_TLS_CA_FILE: /etc/alloy/credentials/ca.crt
-  ALLOY_TLS_CERT_FILE: /etc/alloy/credentials/tls.crt
-  ALLOY_TLS_KEY_FILE: /etc/alloy/credentials/tls.key

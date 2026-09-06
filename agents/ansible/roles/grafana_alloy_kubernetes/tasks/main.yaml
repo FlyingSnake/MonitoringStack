@@ -22,27 +22,15 @@
         name: "{{ alloy_service_account_name }}"
       controller:
         type: daemonset
-        # Secret volume 갱신만으로는 envFrom의 Basic Auth 값과 실행 중인
-        # Alloy 프로세스가 갱신되지 않는다. Vault PKI 인증서를 다시 발급할
-        # 때마다 resourceVersion을 Pod template에 반영해 안전하게 롤아웃한다.
+        # Secret의 Basic Auth 값이 바뀌면 새 환경 변수를 읽도록 Pod를 롤아웃한다.
         podAnnotations:
           monitoring-stack.io/ingest-secret-resource-version: "{{ alloy_ingest_secret_result.result.metadata.resourceVersion }}"
-        volumes:
-          extra:
-            - name: ingest-client
-              secret:
-                secretName: "{{ alloy_ingest_secret_name }}"
       alloy:
         hostAliases: "{{ alloy_host_aliases }}"
         extraEnv: "{{ alloy_environment | dict2items(key_name='name', value_name='value') }}"
         envFrom:
           - secretRef:
               name: "{{ alloy_ingest_secret_name }}"
-        mounts:
-          extra:
-            - name: ingest-client
-              mountPath: "{{ alloy_credentials_mount_path }}"
-              readOnly: true
         extraPorts:
           - { name: otlp-grpc, port: 4317, targetPort: 4317, protocol: TCP }
           - { name: otlp-http, port: 4318, targetPort: 4318, protocol: TCP }
@@ -69,9 +57,6 @@
               pyroscope_url            = sys.env("PYROSCOPE_URL")
               ingest_username          = sys.env("INGEST_USERNAME")
               ingest_password          = sys.env("INGEST_PASSWORD")
-              tls_ca_file              = sys.env("ALLOY_TLS_CA_FILE")
-              tls_cert_file            = sys.env("ALLOY_TLS_CERT_FILE")
-              tls_key_file             = sys.env("ALLOY_TLS_KEY_FILE")
               monitoring_environment  = sys.env("MONITORING_ENVIRONMENT")
               monitoring_cluster      = sys.env("MONITORING_CLUSTER")
             }

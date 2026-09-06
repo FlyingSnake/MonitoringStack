@@ -23,7 +23,7 @@
 
 ## 미검증 항목과 실행 전제
 
-- Windows Alloy은 선언·정적 검사까지 구현되어 있다. 실제 실행 전에는 WinRM 대상, AWX Machine Credential용 ExternalSecret, 신뢰 가능한 mTLS 인증서 체인, Alloy 설치 파일의 공식 SHA-256을 준비하고 설치·업그레이드·서비스 재시작·Event Log·수집을 검증한다.
+- Windows Alloy은 선언·정적 검사까지 구현되어 있다. 실제 실행 전에는 WinRM 대상, AWX Machine Credential용 ExternalSecret, 신뢰 가능한 HTTPS 서버 인증서 체인, Alloy 설치 파일의 공식 SHA-256을 준비하고 설치·업그레이드·서비스 재시작·Event Log·수집을 검증한다.
 - 로컬 Linux 검증 fixture는 Docker 기반 systemd/SSH 컨테이너다. 실제 배포 전에는 대상 OS 배포판, kernel, SELinux/AppArmor, 프록시·DNS, eBPF 권한을 포함한 실제 Linux 호스트에서 재검증한다.
 - ARM64 .NET은 프로파일러 wrapper가 없는 경우 로그·메트릭·트레이스만 수집하도록 설계되어 있다. 해당 아키텍처의 프로파일 수집은 지원 artifact가 준비된 뒤 별도로 검증한다.
 - 브라우저 OIDC 로그인은 Let's Encrypt 인증서가 적용된 실제 도메인과 테스트 계정이 준비된 뒤 수행한다. 그 전까지 HTTPS·OIDC discovery·API 검증만 수행한다.
