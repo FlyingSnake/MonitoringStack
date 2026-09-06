@@ -227,7 +227,8 @@ applications:
         dashboards:
           - name: service-inventory
             uid: service-inventory
-            # Grafana의 예약된 기본 General 폴더는 별도 folder UID 없이 루트에 배치된다.
+            # Grafana Operator의 `folder: General`은 예약된 기본 General 위치를 뜻한다.
+            folder: General
             definition:
               annotations: { list: [] }
               editable: true
