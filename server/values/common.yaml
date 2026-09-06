@@ -382,6 +382,9 @@ applications:
       metricsGenerator:
         enabled: true
         replicas: 3
+        # metrics generator도 object-storage-credentials를 사용하는 Tempo 프로세스다.
+        # ${AWS_*}를 실제 Secret 환경 변수로 확장하지 않으면 MinIO 인증이 실패한다.
+        extraArgs: ["-config.expand-env=true"]
         config:
           processor:
             local_blocks: { filter_server_spans: false, flush_to_storage: true }
