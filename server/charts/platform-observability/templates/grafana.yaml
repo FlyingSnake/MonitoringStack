@@ -53,9 +53,13 @@ metadata:
   annotations:
     argocd.argoproj.io/sync-wave: "1"
 spec:
+  allowCrossNamespaceImport: false
   instanceSelector:
     matchLabels:
       dashboards: grafana
+  {{- if .folder }}
+  folder: {{ .folder | quote }}
+  {{- end }}
   {{- if .folderRef }}
   folderRef: {{ .folderRef | quote }}
   {{- end }}
