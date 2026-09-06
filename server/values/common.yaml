@@ -372,9 +372,9 @@ applications:
     values:
       global:
         extraEnvFrom: [{ secretRef: { name: object-storage-credentials } }]
-      tempo:
-        multitenancyEnabled: false
-        storage: { trace: { backend: s3, s3: { endpoint: "minio.minio.svc.cluster.local:9000", insecure: true, bucket: tempo, access_key: "${AWS_ACCESS_KEY_ID}", secret_key: "${AWS_SECRET_ACCESS_KEY}" } } }
+      multitenancyEnabled: false
+      # tempo-distributed chart는 Tempo 저장소를 최상위 storage 값으로 렌더링한다.
+      storage: { trace: { backend: s3, s3: { endpoint: "minio.minio.svc.cluster.local:9000", insecure: true, bucket: tempo, access_key: "${AWS_ACCESS_KEY_ID}", secret_key: "${AWS_SECRET_ACCESS_KEY}" } } }
       traces:
         otlp: { grpc: { enabled: true }, http: { enabled: true } }
         kafka: { brokers: ["redpanda.redpanda.svc.cluster.local:9093"], topic: tempo }

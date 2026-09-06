@@ -80,8 +80,7 @@ applications:
       querier: { replicas: 3 }
   tempo:
     values:
-      tempo:
-        storage: { trace: { backend: s3, s3: { endpoint: REQUIRED_S3_ENDPOINT, insecure: false, bucket: tempo } } }
+      storage: { trace: { backend: s3, s3: { endpoint: REQUIRED_S3_ENDPOINT, insecure: false, bucket: tempo } } }
       traces:
         kafka: { brokers: [REQUIRED_KAFKA_BROKER], topic: tempo }
       ingester: { replicas: 3 }
