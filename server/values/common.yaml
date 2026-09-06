@@ -224,12 +224,11 @@ applications:
         drilldown:
           enabled: true
           featureToggles: [drilldownRecommendations, perPanelNonApplicableDrilldowns, dashboardUnifiedDrilldownControls]
-        folders:
-          - { name: general, uid: monitoring-general, title: General }
         dashboards:
           - name: service-inventory
             uid: service-inventory
-            folderRef: general
+            # Grafana의 예약된 기본 General 폴더(UID: general)를 사용한다.
+            folderUID: general
             definition:
               annotations: { list: [] }
               editable: true
