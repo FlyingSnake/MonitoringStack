@@ -217,6 +217,7 @@ applications:
         replicas: 1
         oidcSecret: oidc-client-secrets
         keycloakUrl: https://keycloak.dev.example.internal
+        keycloakInternalUrl: http://keycloak.keycloak.svc.cluster.local
         realm: monitoring
         datasources:
           - { name: loki, uid: loki, displayName: Loki, type: loki, url: "http://loki-gateway.loki.svc.cluster.local", isDefault: false }
