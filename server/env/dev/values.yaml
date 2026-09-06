@@ -60,7 +60,9 @@ applications:
         config:
           replication_factor: 1
       # TraceQL/RED metric generator도 개발 환경은 단일 replica로 축소한다.
-      metricsGenerator: { enabled: true, replicas: 1 }
+      # chart 기본 hard anti-affinity는 단일 Kind worker에서 RollingUpdate를 막으므로
+      # dev에 한해 제거한다.
+      metricsGenerator: { enabled: true, replicas: 1, affinity: {}, topologySpreadConstraints: [] }
   pyroscope:
     values:
       # 서버 Alloy Application이 수집을 담당하므로 Pyroscope 차트의 내장 Alloy는 끈다.
