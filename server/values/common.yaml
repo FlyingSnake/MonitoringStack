@@ -219,6 +219,79 @@ applications:
         keycloakUrl: https://keycloak.dev.example.internal
         keycloakInternalUrl: http://keycloak.keycloak.svc.cluster.local
         realm: monitoring
+        # Metrics/Logs/Traces/Profiles Drilldown은 Grafana OSS 13에서 기본 제공되며,
+        # 아래 토글은 대시보드 패널에서 Drilldown 후보를 더 잘 노출한다.
+        drilldown:
+          enabled: true
+          featureToggles: [drilldownRecommendations, perPanelNonApplicableDrilldowns, dashboardUnifiedDrilldownControls]
+        folders:
+          - { name: general, uid: monitoring-general, title: General }
+        dashboards:
+          - name: service-inventory
+            uid: service-inventory
+            folderRef: general
+            definition:
+              annotations: { list: [] }
+              editable: true
+              fiscalYearStartMonth: 0
+              graphTooltip: 0
+              links: []
+              panels:
+                - id: 1
+                  title: Active Services
+                  type: stat
+                  datasource: { type: prometheus, uid: mimir }
+                  gridPos: { h: 7, w: 6, x: 0, "y": 0 }
+                  targets: [{ refId: A, expr: 'count(count by (job) (up))', instant: true }]
+                  options: { reduceOptions: { calcs: [lastNotNull], fields: '', values: false }, orientation: auto, textMode: auto }
+                - id: 2
+                  title: Healthy Targets
+                  type: stat
+                  datasource: { type: prometheus, uid: mimir }
+                  gridPos: { h: 7, w: 6, x: 6, "y": 0 }
+                  targets: [{ refId: A, expr: 'sum(up{job=~"$job"} == 1)', instant: true }]
+                  options: { reduceOptions: { calcs: [lastNotNull], fields: '', values: false }, orientation: auto, textMode: auto }
+                - id: 3
+                  title: Unhealthy Targets
+                  type: stat
+                  datasource: { type: prometheus, uid: mimir }
+                  gridPos: { h: 7, w: 6, x: 12, "y": 0 }
+                  targets: [{ refId: A, expr: 'sum(up{job=~"$job"} == 0)', instant: true }]
+                  options: { reduceOptions: { calcs: [lastNotNull], fields: '', values: false }, orientation: auto, textMode: auto }
+                  fieldConfig: { defaults: { thresholds: { mode: absolute, steps: [{ color: green, value: null }, { color: red, value: 1 }] } }, overrides: [] }
+                - id: 4
+                  title: Availability by Service
+                  type: timeseries
+                  datasource: { type: prometheus, uid: mimir }
+                  gridPos: { h: 7, w: 12, x: 0, "y": 7 }
+                  targets: [{ refId: A, expr: 'sum by (job) (up{job=~"$job"})', legendFormat: '{{job}}' }]
+                  fieldConfig: { defaults: { min: 0, max: 1, unit: percentunit }, overrides: [] }
+                - id: 5
+                  title: Service Targets
+                  type: table
+                  datasource: { type: prometheus, uid: mimir }
+                  gridPos: { h: 9, w: 12, x: 12, "y": 0 }
+                  targets: [{ refId: A, expr: 'max by (job, instance) (up{job=~"$job"})', format: table, instant: true }]
+                  options: { showHeader: true, cellHeight: sm }
+              refresh: 30s
+              schemaVersion: 41
+              tags: [inventory, services, monitoring-stack]
+              templating:
+                list:
+                  - name: job
+                    label: Service
+                    type: query
+                    datasource: { type: prometheus, uid: mimir }
+                    definition: 'label_values(up, job)'
+                    query: { query: 'label_values(up, job)', refId: StandardVariableQuery }
+                    includeAll: true
+                    allValue: '.*'
+                    multi: true
+                    current: { text: All, value: '$__all' }
+              time: { from: now-6h, to: now }
+              timezone: browser
+              title: Service Inventory
+              version: 1
         datasources:
           - { name: loki, uid: loki, displayName: Loki, type: loki, url: "http://loki-gateway.loki.svc.cluster.local", isDefault: false }
           - { name: mimir, uid: mimir, displayName: Mimir, type: prometheus, url: "http://mimir-gateway.monitoring-stack-server.svc.cluster.local/prometheus", isDefault: true }
