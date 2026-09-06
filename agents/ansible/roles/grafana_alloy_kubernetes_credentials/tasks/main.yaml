@@ -35,6 +35,14 @@
   register: alloy_ingestion_credentials
   no_log: true
 
+- name: 이전 mTLS Alloy 수집 인증 Secret 제거
+  kubernetes.core.k8s:
+    state: absent
+    api_version: v1
+    kind: Secret
+    name: "{{ alloy_ingest_secret_name }}"
+    namespace: "{{ alloy_namespace }}"
+
 - name: Kubernetes Alloy 수집 인증 Secret 적용
   kubernetes.core.k8s:
     state: present
