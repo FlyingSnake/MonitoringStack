@@ -62,7 +62,10 @@ applications:
       # TraceQL/RED metric generator도 개발 환경은 단일 replica로 축소한다.
       # chart 기본 hard anti-affinity는 단일 Kind worker에서 RollingUpdate를 막으므로
       # dev에 한해 제거한다.
-      metricsGenerator: { enabled: true, replicas: 1, affinity: "", topologySpreadConstraints: "" }
+      # tempo-distributed 차트는 이 두 값을 Helm 템플릿 문자열로 렌더링한다.
+      # 빈 문자열은 차트 기본값으로 병합되므로, 비어 있는 Kubernetes 객체/목록을
+      # 명시해 단일 Kind worker에서 기본 hard anti-affinity를 제거한다.
+      metricsGenerator: { enabled: true, replicas: 1, affinity: "{}", topologySpreadConstraints: "[]" }
   pyroscope:
     values:
       # 서버 Alloy Application이 수집을 담당하므로 Pyroscope 차트의 내장 Alloy는 끈다.
