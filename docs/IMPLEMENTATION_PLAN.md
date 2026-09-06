@@ -12,6 +12,7 @@
 | 인증·UI | Keycloak realm/client 선언, Grafana·Argo CD·AWX OIDC 설정 선언 및 Grafana datasource CR 등록 완료 |
 | 저장소·큐 | dev MinIO와 Redpanda, Loki/Mimir/Tempo/Pyroscope의 S3·Kafka 연결 구현 완료 |
 | 관측성 | Grafana Operator, Loki Distributed, Mimir, Tempo, Pyroscope, blackbox exporter, 서버 Alloy를 Kind 단일 복제본으로 검증 완료 |
+| Grafana Drilldown | Grafana 13 내장 Logs·Metrics·Traces·Profiles Drilldown에 Loki pattern/volume 탐색, Mimir datasource, Tempo TraceQL·RED metrics, Pyroscope datasource 연계를 선언 |
 | Kubernetes Alloy | AWX → Vault Kubernetes Auth → Basic Auth Secret → Alloy DaemonSet 흐름 구현 완료. mTLS 제거 후 런타임 재검증 대기 |
 | Linux Alloy | AWX → SSH fixture → Vault KV → systemd Alloy 배포 흐름 구현 완료. mTLS 제거 후 수집 런타임 재검증 대기 |
 | Windows Alloy | 인벤토리·Job Template·Ansible 역할·Vault credential 계약 구현 및 정적 검증 완료. 실제 WinRM 대상 검증 대기 |

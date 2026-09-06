@@ -293,8 +293,8 @@ applications:
               version: 1
         datasources:
           - { name: loki, uid: loki, displayName: Loki, type: loki, url: "http://loki-gateway.loki.svc.cluster.local", isDefault: false }
-          - { name: mimir, uid: mimir, displayName: Mimir, type: prometheus, url: "http://mimir-gateway.monitoring-stack-server.svc.cluster.local/prometheus", isDefault: true }
-          - { name: tempo, uid: tempo, displayName: Tempo, type: tempo, url: "http://tempo-query-frontend.monitoring-stack-server.svc.cluster.local:3200", isDefault: false, jsonData: { tracesToLogsV2: { datasourceUid: loki }, tracesToProfiles: { datasourceUid: pyroscope } } }
+          - { name: mimir, uid: mimir, displayName: Mimir, type: prometheus, url: "http://mimir-gateway.monitoring-stack-server.svc.cluster.local/prometheus", isDefault: true, jsonData: { timeInterval: 15s } }
+          - { name: tempo, uid: tempo, displayName: Tempo, type: tempo, url: "http://tempo-query-frontend.monitoring-stack-server.svc.cluster.local:3200", isDefault: false, jsonData: { tracesToLogsV2: { datasourceUid: loki }, tracesToMetrics: { datasourceUid: mimir }, tracesToProfiles: { datasourceUid: pyroscope }, serviceMap: { datasourceUid: mimir } } }
           - { name: pyroscope, uid: pyroscope, displayName: Pyroscope, type: grafana-pyroscope-datasource, url: "http://pyroscope.pyroscope.svc.cluster.local:4040", isDefault: false }
 
   loki:
@@ -311,6 +311,13 @@ applications:
       loki:
         auth_enabled: false
         commonConfig: { replication_factor: 1 }
+        # Logs Drilldown의 Patterns, Log volume, 레벨·서비스 감지를 활성화한다.
+        pattern_ingester: { enabled: true }
+        limits_config:
+          allow_structured_metadata: true
+          volume_enabled: true
+          discover_log_levels: true
+          discover_service_name: [service_name, service, app, app_kubernetes_io_name, container, job]
         schemaConfig: { configs: [{ from: "2024-04-01", store: tsdb, object_store: s3, schema: v13, index: { prefix: loki_index_, period: 24h } }] }
         # MinIO는 virtual-host 방식의 `bucket.minio...` DNS를 제공하지 않으므로
         # path-style S3 요청을 강제한다.
@@ -330,6 +337,8 @@ applications:
       # TSDB 인덱스 조회를 위한 index gateway는 분산 모드에서 필수다.
       indexGateway: { replicas: 1 }
       compactor: { replicas: 1 }
+      # Grafana Logs Drilldown의 Patterns API를 제공하는 별도 컴포넌트다.
+      patternIngester: { enabled: true, replicas: 3 }
 
   mimir:
     enabled: true
@@ -369,6 +378,20 @@ applications:
       traces:
         otlp: { grpc: { enabled: true }, http: { enabled: true } }
         kafka: { brokers: ["redpanda.redpanda.svc.cluster.local:9093"], topic: tempo }
+      # Traces Drilldown의 TraceQL metric과 Mimir의 RED/service graph 조회를 제공한다.
+      metricsGenerator:
+        enabled: true
+        replicas: 3
+        config:
+          processor:
+            local_blocks: { filter_server_spans: false, flush_to_storage: true }
+          storage:
+            remote_write:
+              - url: "http://mimir-gateway.monitoring-stack-server.svc.cluster.local/api/v1/push"
+      overrides:
+        defaults:
+          metrics_generator:
+            processors: [local-blocks, service-graphs, span-metrics]
       # 환경 변수로 주입한 객체 저장소 자격증명은 Tempo 프로세스만 확장한다.
       # global.extraArgs는 memcached에도 전달되어 기동 인자를 손상시키므로 사용하지 않는다.
       distributor: { replicas: 1, extraArgs: ["-config.expand-env=true"] }

@@ -48,3 +48,7 @@ server/
 로컬 Kind는 `server/env/dev/values.yaml` 위에 `local/server/values.yaml`을 겹쳐 모든 서버 컴포넌트를 단일 복제본·비영속 스토리지로 기동합니다. 해당 runtime values의 추적 가능한 예시는 [../scripts/local/server/values.example.yaml](../scripts/local/server/values.example.yaml)에 있으며, local Git daemon의 `dev` 브랜치를 Argo CD source로 사용하므로 원격 push 없이도 수동 Sync를 검증할 수 있습니다.
 
 로컬 Let’s Encrypt 데모의 수집 endpoint는 `loki-ingest`, `mimir-ingest`, `tempo-ingest`, `pyroscope-ingest.demo.flyingsnake.xyz`이며, Gateway에서 HTTPS와 HTTP Basic Auth를 검증합니다. Gateway 서버 TLS는 Let’s Encrypt Secret을 사용하고, Vault bootstrap은 ExternalSecret과 AWX가 사용할 수집 Basic Auth 자격증명을 준비합니다. Keycloak은 Gateway에서 TLS를 종료하는 구성을 전제로 `KC_HOSTNAME=https://keycloak.<환경>.<도메인>` 및 `X-Forwarded-*` 헤더를 사용하므로, OIDC issuer와 모든 browser endpoint를 HTTPS로 반환합니다. 상태·UI API·AWX·언어별 telemetry 검증은 `make local-*` 명령으로 수행하며 자세한 실행 순서는 [../scripts/local/README.md](../scripts/local/README.md)를 참고하세요.
+
+## Grafana Drilldown
+
+Grafana 13 이상은 Logs·Metrics·Traces·Profiles Drilldown을 내장하므로 외부 앱 플러그인을 따로 내려받지 않습니다. 이 저장소는 Loki의 pattern ingester·volume/레벨/서비스 감지, Tempo의 TraceQL metrics 및 metrics-generator의 Mimir remote-write, 네 datasource UID 상호 연결을 선언합니다. 따라서 Grafana 메뉴의 **Drilldown**에서 Loki, Mimir, Tempo, Pyroscope 데이터를 각각 선택해 탐색할 수 있습니다.
