@@ -226,10 +226,10 @@ applications:
           featureToggles: [drilldownRecommendations, perPanelNonApplicableDrilldowns, dashboardUnifiedDrilldownControls]
         dashboards:
           - name: service-inventory
-            uid: service-inventory
             # Grafana Operator의 `folder: General`은 예약된 기본 General 위치를 뜻한다.
             folder: General
             definition:
+              uid: service-inventory
               annotations: { list: [] }
               editable: true
               fiscalYearStartMonth: 0
