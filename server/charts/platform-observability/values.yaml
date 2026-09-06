@@ -8,4 +8,10 @@ grafana:
   keycloakUrl: https://keycloak.example.internal
   keycloakInternalUrl: http://keycloak.keycloak.svc.cluster.local
   realm: monitoring
+  drilldown:
+    enabled: false
+    # Grafana 13.1.3에서 제공하는 Drilldown 연계 기능을 명시적으로 켠다.
+    featureToggles: []
+  folders: []
+  dashboards: []
   datasources: []

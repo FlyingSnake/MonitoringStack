@@ -23,6 +23,10 @@ spec:
       token_url: {{ printf "%s/realms/%s/protocol/openid-connect/token" .Values.grafana.keycloakInternalUrl .Values.grafana.realm | quote }}
       api_url: {{ printf "%s/realms/%s/protocol/openid-connect/userinfo" .Values.grafana.keycloakInternalUrl .Values.grafana.realm | quote }}
       role_attribute_path: "contains(groups[*], 'platform-admin') && 'Admin' || contains(groups[*], 'observability-viewer') && 'Viewer' || 'Viewer'"
+    {{- if .Values.grafana.drilldown.enabled }}
+    feature_toggles:
+      enable: {{ join "," .Values.grafana.drilldown.featureToggles | quote }}
+    {{- end }}
   deployment:
     spec:
       replicas: {{ .Values.grafana.replicas }}
@@ -39,6 +43,40 @@ spec:
   service:
     spec:
       type: ClusterIP
+{{- range .Values.grafana.folders }}
+---
+apiVersion: grafana.integreatly.org/v1beta1
+kind: GrafanaFolder
+metadata:
+  name: {{ .name }}
+  namespace: grafana
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+spec:
+  instanceSelector:
+    matchLabels:
+      dashboards: grafana
+  title: {{ .title | quote }}
+  uid: {{ .uid | quote }}
+{{- end }}
+{{- range .Values.grafana.dashboards }}
+---
+apiVersion: grafana.integreatly.org/v1beta1
+kind: GrafanaDashboard
+metadata:
+  name: {{ .name }}
+  namespace: grafana
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+spec:
+  instanceSelector:
+    matchLabels:
+      dashboards: grafana
+  folderRef: {{ .folderRef | quote }}
+  uid: {{ .uid | quote }}
+  json: |
+    {{- toJson .definition | nindent 4 }}
+{{- end }}
 {{- range .Values.grafana.datasources }}
 ---
 apiVersion: grafana.integreatly.org/v1beta1
