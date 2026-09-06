@@ -20,8 +20,8 @@ spec:
       client_secret: $__env{GF_AUTH_GENERIC_OAUTH_CLIENT_SECRET}
       scopes: openid profile email groups
       auth_url: {{ printf "%s/realms/%s/protocol/openid-connect/auth" .Values.grafana.keycloakUrl .Values.grafana.realm | quote }}
-      token_url: {{ printf "%s/realms/%s/protocol/openid-connect/token" .Values.grafana.keycloakUrl .Values.grafana.realm | quote }}
-      api_url: {{ printf "%s/realms/%s/protocol/openid-connect/userinfo" .Values.grafana.keycloakUrl .Values.grafana.realm | quote }}
+      token_url: {{ printf "%s/realms/%s/protocol/openid-connect/token" .Values.grafana.keycloakInternalUrl .Values.grafana.realm | quote }}
+      api_url: {{ printf "%s/realms/%s/protocol/openid-connect/userinfo" .Values.grafana.keycloakInternalUrl .Values.grafana.realm | quote }}
       role_attribute_path: "contains(groups[*], 'platform-admin') && 'Admin' || contains(groups[*], 'observability-viewer') && 'Viewer' || 'Viewer'"
   deployment:
     spec:

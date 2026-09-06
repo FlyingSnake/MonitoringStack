@@ -3,6 +3,9 @@ grafana:
   rootUrl: https://grafana.example.internal
   replicas: 1
   oidcSecret: oidc-client-secrets
+  # 브라우저 리디렉션은 외부 HTTPS URL을, Grafana Pod의 code/token 교환은
+  # ClusterIP Service DNS를 사용한다.
   keycloakUrl: https://keycloak.example.internal
+  keycloakInternalUrl: http://keycloak.keycloak.svc.cluster.local
   realm: monitoring
   datasources: []
