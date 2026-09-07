@@ -1,5 +1,9 @@
 {{- range $name, $app := .Values.applications }}
 {{- if $app.enabled }}
+{{- $appValues := deepCopy $app.values }}
+{{- with (index ($.Values.platform.observability.overrides | default dict) $name) }}
+{{- $appValues = mergeOverwrite $appValues . }}
+{{- end }}
 ---
 apiVersion: argoproj.io/v1alpha1
 kind: Application
@@ -14,19 +18,19 @@ spec:
   project: {{ $.Values.project.name }}
   destination:
     server: {{ $.Values.cluster.server | quote }}
-    namespace: {{ $app.namespace | quote }}
+    namespace: {{ tpl (toString $app.namespace) $ | quote }}
   source:
     {{- if eq $app.source.type "helm" }}
     chart: {{ $app.source.chart | quote }}
     repoURL: {{ $app.source.repoURL | quote }}
-    targetRevision: {{ $app.source.targetRevision | quote }}
+    targetRevision: {{ tpl (toString $app.source.targetRevision) $ | quote }}
     helm:
       releaseName: {{ $app.releaseName | default $name | quote }}
       {{- if $app.source.skipCrds }}
       skipCrds: true
       {{- end }}
       valuesObject:
-        {{- toYaml $app.values | nindent 8 }}
+        {{- tpl (toYaml $appValues) $ | nindent 8 }}
     {{- else }}
     repoURL: {{ $.Values.repository.url | quote }}
     targetRevision: {{ $.Values.gitRevision | quote }}
@@ -34,7 +38,7 @@ spec:
     helm:
       releaseName: {{ $app.releaseName | default $name | quote }}
       valuesObject:
-        {{- toYaml $app.values | nindent 8 }}
+        {{- tpl (toYaml $appValues) $ | nindent 8 }}
     {{- end }}
   syncPolicy:
     syncOptions:

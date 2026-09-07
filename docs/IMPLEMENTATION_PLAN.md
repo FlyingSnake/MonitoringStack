@@ -8,13 +8,14 @@
 | --- | --- |
 | GitOps 기반 | Argo CD bootstrap, AppProject, 환경별 `targetRevision`, local Git daemon 기반 Kind 소스 검증 완료 |
 | 재현 가능한 로컬 검증 | Kind·Gateway·Vault·AWX fixture는 `scripts/local/`, 언어별 워크로드는 `tests/telemetry-workloads/`로 Git 추적. 개인별 values·인증서·키·bare Git 상태는 `local/`에만 보관 |
-| 보안·인증 | Vault, External Secrets, Gateway UI/수집 listener, HTTPS 서버 인증서 + HTTP Basic Auth 전환 구현·정적 검증 완료. 다음 Argo CD 수동 Sync 후 로컬 회귀 검증 대기 |
+| 보안·인증 | Vault, External Secrets, Gateway UI/수집 listener, HTTPS 서버 인증서 + HTTP Basic Auth 전환 및 Kind 회귀 검증 완료 |
 | 인증·UI | Keycloak realm/client 선언, Grafana·Argo CD·AWX OIDC 설정 선언 및 Grafana datasource CR 등록 완료 |
 | 저장소·큐 | dev MinIO와 Redpanda, Loki/Mimir/Tempo/Pyroscope의 S3·Kafka 연결 구현 완료 |
 | 관측성 | Grafana Operator, Loki Distributed, Mimir, Tempo, Pyroscope, blackbox exporter, 서버 Alloy를 Kind 단일 복제본으로 검증 완료 |
 | Grafana Drilldown | Grafana 13 내장 Logs·Metrics·Traces·Profiles Drilldown에 Loki pattern/volume 탐색, Mimir datasource, Tempo TraceQL·RED metrics, Pyroscope datasource 연계를 선언 |
-| Kubernetes Alloy | AWX → Vault Kubernetes Auth → Basic Auth Secret → Alloy DaemonSet 흐름 구현 완료. mTLS 제거 후 런타임 재검증 대기 |
-| Linux Alloy | AWX → SSH fixture → Vault KV → systemd Alloy 배포 흐름 구현 완료. mTLS 제거 후 수집 런타임 재검증 대기 |
+| Kubernetes Alloy | AWX → Vault Kubernetes Auth → Basic Auth Secret → Alloy DaemonSet 흐름 및 수집 검증 완료 |
+| Linux Alloy | AWX → SSH fixture → Vault KV → systemd Alloy 배포 흐름 및 수집 검증 완료 |
+| 환경 계약 | server `platform` 계약과 agent target values를 단일 원천으로 사용. S3/Kafka/Vault/namespace/host 변경은 환경 YAML과 preflight로 제어 |
 | Windows Alloy | 인벤토리·Job Template·Ansible 역할·Vault credential 계약 구현 및 정적 검증 완료. 실제 WinRM 대상 검증 대기 |
 | .NET 워크로드 | 멀티 아키텍처 초기화와 ARM64 graceful fallback 구현. ARM64 Kind에서 로그·메트릭·트레이스 검증 완료, 프로파일은 wrapper 제공 전까지 보류 |
 | 환경 사전검사 | `make preflight-server ENV=<dev|stg|prd> [OVERLAY=...]`로 Gateway·Vault·S3·Kafka·agent revision 계약을 렌더링 검증. 미치환 `REQUIRED_*`와 `example.internal`은 Sync 전에 거부 |

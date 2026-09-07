@@ -1,7 +1,11 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-namespace="telemetry-workloads"
+script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "${script_dir}/lib.sh"
+telemetry_load_config
+kubectl config use-context "${telemetry_cluster_context}" >/dev/null
+namespace="${telemetry_namespace}"
 for app in dotnet java go nodejs; do
   observed=false
   for _ in $(seq 1 18); do

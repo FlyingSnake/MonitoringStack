@@ -1,9 +1,11 @@
 environment: prd
+cluster: prd
 target: k8s
 enabled: true
 inventory: { source: agents/ansible/inventories/prd/k8s/hosts.yml }
 alloy:
   version: 1.19.2
+  chartVersion: 1.12.1
   config: { repository: "https://github.com/FlyingSnake/MonitoringStack.git", revision: main, modulePath: agents/alloy/modules/kubernetes/alloy.alloy, pullFrequency: 5m }
 endpoints:
   loki: https://loki.ingest.prd.example.internal/loki/api/v1/push
@@ -11,4 +13,5 @@ endpoints:
   tempoHttp: https://tempo.ingest.prd.example.internal
   pyroscope: https://pyroscope.ingest.prd.example.internal
 security: { authSecretRef: alloy-write-credentials }
+automation: { vault: { address: "http://vault.vault.svc.cluster.local:8200", kubernetesRole: awx-agent, ingestionPath: monitoring/data/ingestion } }
 features: { logs: true, metrics: true, traces: true, profiling: false }

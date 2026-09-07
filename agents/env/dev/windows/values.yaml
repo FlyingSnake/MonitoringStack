@@ -1,4 +1,5 @@
 environment: dev
+cluster: dev
 target: windows
 enabled: true
 inventory: { source: agents/ansible/inventories/dev/windows/hosts.yml }
@@ -11,4 +12,5 @@ endpoints:
   tempoHttp: https://tempo.ingest.dev.example.internal
   pyroscope: https://pyroscope.ingest.dev.example.internal
 security: { authSecretRef: alloy-write-credentials }
+automation: { vault: { address: "http://vault.vault.svc.cluster.local:8200", kubernetesRole: awx-agent, ingestionPath: monitoring/data/ingestion } }
 features: { logs: true, metrics: true, traces: true, profiling: false }

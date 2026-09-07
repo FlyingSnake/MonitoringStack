@@ -1,6 +1,7 @@
 repository:
   url: https://github.com/FlyingSnake/MonitoringStack.git
 gitRevision: dev
+environment: dev
 cluster:
   server: https://kubernetes.default.svc
 project:
@@ -17,6 +18,59 @@ project:
     - https://prometheus-community.github.io/helm-charts
     - https://charts.redpanda.com
     - https://ansible-community.github.io/awx-operator-helm
+
+# 환경별 values가 덮어쓰는 배포 계약이다. 아래 Application 기본값은 이 계약만
+# 참조하므로 도메인·namespace·Vault·S3·Kafka를 바꿀 때 공통 템플릿을 수정하지 않는다.
+platform:
+  namespaces:
+    monitoring: monitoring-stack-server
+  vault:
+    address: http://vault.vault.svc.cluster.local:8200
+    kvMount: monitoring
+    kubernetesAuthMount: kubernetes
+    roles:
+      secretStore: monitoring-stack
+      gatewayIssuer: cert-manager-issuer
+      keycloakConfig: keycloak-config
+      awxAgent: awx-agent
+    paths:
+      ingestion: monitoring/data/ingestion
+      oidc: monitoring/oidc
+      gatewaySign: pki_int/sign/monitoring-server
+  objectStorage:
+    endpoint: minio.minio.svc.cluster.local:9000
+    region: ""
+    insecure: true
+    forcePathStyle: true
+    buckets:
+      loki: loki
+      tempo: tempo
+      mimirBlocks: mimir-blocks
+      mimirRuler: mimir-ruler
+      mimirAlertmanager: mimir-alertmanager
+      pyroscope: pyroscope
+  kafka:
+    brokers: ["redpanda.redpanda.svc.cluster.local:9093"]
+    tls: { enabled: false, serverName: "", caSecretRef: "" }
+    sasl: { enabled: false, mechanism: "", secretRef: "" }
+    topics: { mimirIngest: mimir-ingest, tempo: tempo }
+    autoCreate: { enabled: true, partitions: 3 }
+  hosts:
+    grafana: grafana.dev.example.internal
+    argocd: argocd.dev.example.internal
+    keycloak: keycloak.dev.example.internal
+    awx: awx.dev.example.internal
+    lokiIngest: loki.ingest.dev.example.internal
+    mimirIngest: mimir.ingest.dev.example.internal
+    tempoIngest: tempo.ingest.dev.example.internal
+    pyroscopeIngest: pyroscope.ingest.dev.example.internal
+  identity:
+    realm: monitoring
+    groups: { platformAdmin: platform-admin, observabilityViewer: observability-viewer }
+  observability:
+    # backend별 resource/retention/persistence chart values를 환경별로 합친다.
+    # 예: overrides.loki.loki.limits_config.retention_period
+    overrides: {}
 
 applications:
   vault:
@@ -70,7 +124,7 @@ applications:
         - { name: minio }
         - { name: redpanda }
         - { name: loki }
-        - { name: monitoring-stack-server }
+        - { name: '{{ .Values.platform.namespaces.monitoring }}' }
         - { name: pyroscope }
         - { name: grafana }
         - { name: blackbox }
@@ -79,7 +133,7 @@ applications:
         - { name: alloy }
       bootstrapServiceAccounts:
         - { name: external-secrets-vault, namespace: external-secrets }
-      protectedNamespaces: [keycloak, minio, redpanda, loki, monitoring-stack-server, pyroscope, grafana, blackbox, awx, observability, alloy]
+      protectedNamespaces: [keycloak, minio, redpanda, loki, '{{ .Values.platform.namespaces.monitoring }}', pyroscope, grafana, blackbox, awx, observability, alloy]
       gatewayNamespace: gateway-system
       gatewayEgressPorts: [443]
       alloyRbac: { enabled: true, namespace: alloy, serviceAccountName: alloy, clusterRoleName: alloy }
@@ -107,10 +161,10 @@ applications:
       vault:
         enabled: true
         storeName: vault-backend
-        server: http://vault.vault.svc.cluster.local:8200
-        kvMount: monitoring
-        kubernetesAuthMount: kubernetes
-        role: monitoring-stack
+        server: '{{ .Values.platform.vault.address }}'
+        kvMount: '{{ .Values.platform.vault.kvMount }}'
+        kubernetesAuthMount: '{{ .Values.platform.vault.kubernetesAuthMount }}'
+        role: '{{ .Values.platform.vault.roles.secretStore }}'
       gatewaySecretNamespace: gateway-system
       externalSecrets:
         - { name: keycloak-admin, namespace: keycloak, targetSecret: keycloak-admin, keys: [{ secretKey: admin-password, remoteKey: keycloak, property: admin-password }] }
@@ -121,12 +175,12 @@ applications:
         - { name: oidc-client-secrets, namespace: grafana, targetSecret: oidc-client-secrets, keys: [{ secretKey: grafana-client-secret, remoteKey: oidc, property: grafana-client-secret }] }
         - { name: minio-root, namespace: minio, targetSecret: minio-root, keys: [{ secretKey: root-user, remoteKey: minio, property: root-user }, { secretKey: root-password, remoteKey: minio, property: root-password }] }
         - { name: object-storage-credentials, namespace: loki, targetSecret: object-storage-credentials, keys: [{ secretKey: AWS_ACCESS_KEY_ID, remoteKey: object-storage, property: access-key-id }, { secretKey: AWS_SECRET_ACCESS_KEY, remoteKey: object-storage, property: secret-access-key }] }
-        - { name: object-storage-credentials, namespace: monitoring-stack-server, targetSecret: object-storage-credentials, keys: [{ secretKey: AWS_ACCESS_KEY_ID, remoteKey: object-storage, property: access-key-id }, { secretKey: AWS_SECRET_ACCESS_KEY, remoteKey: object-storage, property: secret-access-key }] }
+        - { name: object-storage-credentials, namespace: '{{ .Values.platform.namespaces.monitoring }}', targetSecret: object-storage-credentials, keys: [{ secretKey: AWS_ACCESS_KEY_ID, remoteKey: object-storage, property: access-key-id }, { secretKey: AWS_SECRET_ACCESS_KEY, remoteKey: object-storage, property: secret-access-key }] }
         - { name: object-storage-credentials, namespace: pyroscope, targetSecret: object-storage-credentials, keys: [{ secretKey: AWS_ACCESS_KEY_ID, remoteKey: object-storage, property: access-key-id }, { secretKey: AWS_SECRET_ACCESS_KEY, remoteKey: object-storage, property: secret-access-key }] }
         - { name: awx-admin, namespace: awx, targetSecret: awx-admin, keys: [{ secretKey: password, remoteKey: awx, property: admin-password }] }
         - { name: oidc-client-secrets, namespace: awx, targetSecret: oidc-client-secrets, keys: [{ secretKey: awx-client-secret, remoteKey: oidc, property: awx-client-secret }] }
         - { name: ingestion-basic-auth, namespace: loki, targetSecret: ingestion-basic-auth, keys: [{ secretKey: .htpasswd, remoteKey: ingestion, property: htpasswd }] }
-        - { name: ingestion-basic-auth, namespace: monitoring-stack-server, targetSecret: ingestion-basic-auth, keys: [{ secretKey: .htpasswd, remoteKey: ingestion, property: htpasswd }] }
+        - { name: ingestion-basic-auth, namespace: '{{ .Values.platform.namespaces.monitoring }}', targetSecret: ingestion-basic-auth, keys: [{ secretKey: .htpasswd, remoteKey: ingestion, property: htpasswd }] }
         - { name: ingestion-basic-auth, namespace: pyroscope, targetSecret: ingestion-basic-auth, keys: [{ secretKey: .htpasswd, remoteKey: ingestion, property: htpasswd }] }
 
   keycloak:
@@ -142,7 +196,7 @@ applications:
       proxyHeaders: xforwarded
       httpEnabled: true
       extraEnvVars:
-        - { name: KC_HOSTNAME, value: "https://keycloak.dev.example.internal" }
+        - { name: KC_HOSTNAME, value: 'https://{{ .Values.platform.hosts.keycloak }}' }
       auth: { adminUser: admin, existingSecret: keycloak-admin, passwordSecretKey: admin-password }
       postgresql:
         enabled: true
@@ -161,12 +215,17 @@ applications:
     source: { type: git, path: server/charts/platform-identity }
     values:
       keycloak:
-        realm: monitoring
+        realm: '{{ .Values.platform.identity.realm }}'
         internalUrl: http://keycloak.keycloak.svc.cluster.local
         adminSecret: keycloak-admin
         oidcSecret: oidc-client-secrets
         image: adorsys/keycloak-config-cli:6.5.1-26
-        hosts: { argocd: "https://argocd.dev.example.internal", grafana: "https://grafana.dev.example.internal", awx: "https://awx.dev.example.internal" }
+        vaultAddress: '{{ .Values.platform.vault.address }}'
+        vaultKubernetesAuthMount: '{{ .Values.platform.vault.kubernetesAuthMount }}'
+        vaultKubernetesAuthRole: '{{ .Values.platform.vault.roles.keycloakConfig }}'
+        vaultOidcPath: '{{ .Values.platform.vault.paths.oidc }}'
+        groups: { platformAdmin: '{{ .Values.platform.identity.groups.platformAdmin }}', observabilityViewer: '{{ .Values.platform.identity.groups.observabilityViewer }}' }
+        hosts: { argocd: 'https://{{ .Values.platform.hosts.argocd }}', grafana: 'https://{{ .Values.platform.hosts.grafana }}', awx: 'https://{{ .Values.platform.hosts.awx }}' }
 
   minio:
     enabled: true
@@ -178,7 +237,7 @@ applications:
       console: { image: { repository: bitnamilegacy/minio-object-browser } }
       mode: standalone
       auth: { existingSecret: minio-root, rootUserSecretKey: root-user, rootPasswordSecretKey: root-password }
-      defaultBuckets: loki,tempo,mimir-blocks,mimir-ruler,mimir-alertmanager,pyroscope
+      defaultBuckets: '{{ .Values.platform.objectStorage.buckets.loki }},{{ .Values.platform.objectStorage.buckets.tempo }},{{ .Values.platform.objectStorage.buckets.mimirBlocks }},{{ .Values.platform.objectStorage.buckets.mimirRuler }},{{ .Values.platform.objectStorage.buckets.mimirAlertmanager }},{{ .Values.platform.objectStorage.buckets.pyroscope }}'
       persistence: { enabled: true, size: 50Gi }
 
   redpanda:
@@ -212,12 +271,12 @@ applications:
     values:
       grafana:
         enabled: true
-        rootUrl: https://grafana.dev.example.internal
+        rootUrl: 'https://{{ .Values.platform.hosts.grafana }}'
         replicas: 1
         oidcSecret: oidc-client-secrets
-        keycloakUrl: https://keycloak.dev.example.internal
+        keycloakUrl: 'https://{{ .Values.platform.hosts.keycloak }}'
         keycloakInternalUrl: http://keycloak.keycloak.svc.cluster.local
-        realm: monitoring
+        realm: '{{ .Values.platform.identity.realm }}'
         # Metrics/Logs/Traces/Profiles Drilldown은 Grafana OSS 13에서 기본 제공되며,
         # 아래 토글은 대시보드 패널에서 Drilldown 후보를 더 잘 노출한다.
         drilldown:
@@ -263,7 +322,7 @@ applications:
                   type: timeseries
                   datasource: { type: prometheus, uid: mimir }
                   gridPos: { h: 7, w: 12, x: 0, "y": 7 }
-                  targets: [{ refId: A, expr: 'sum by (job) (up{job=~"$job"})', legendFormat: '{{job}}' }]
+                  targets: [{ refId: A, expr: 'sum by (job) (up{job=~"$job"})', legendFormat: '{{ "{{" }}job{{ "}}" }}' }]
                   fieldConfig: { defaults: { min: 0, max: 1, unit: percentunit }, overrides: [] }
                 - id: 5
                   title: Service Targets
@@ -293,8 +352,8 @@ applications:
               version: 1
         datasources:
           - { name: loki, uid: loki, displayName: Loki, type: loki, url: "http://loki-gateway.loki.svc.cluster.local", isDefault: false }
-          - { name: mimir, uid: mimir, displayName: Mimir, type: prometheus, url: "http://mimir-gateway.monitoring-stack-server.svc.cluster.local/prometheus", isDefault: true, jsonData: { timeInterval: 15s } }
-          - { name: tempo, uid: tempo, displayName: Tempo, type: tempo, url: "http://tempo-query-frontend.monitoring-stack-server.svc.cluster.local:3200", isDefault: false, jsonData: { tracesToLogsV2: { datasourceUid: loki }, tracesToMetrics: { datasourceUid: mimir }, tracesToProfiles: { datasourceUid: pyroscope }, serviceMap: { datasourceUid: mimir } } }
+          - { name: mimir, uid: mimir, displayName: Mimir, type: prometheus, url: 'http://mimir-gateway.{{ .Values.platform.namespaces.monitoring }}.svc.cluster.local/prometheus', isDefault: true, jsonData: { timeInterval: 15s } }
+          - { name: tempo, uid: tempo, displayName: Tempo, type: tempo, url: 'http://tempo-query-frontend.{{ .Values.platform.namespaces.monitoring }}.svc.cluster.local:3200', isDefault: false, jsonData: { tracesToLogsV2: { datasourceUid: loki }, tracesToMetrics: { datasourceUid: mimir }, tracesToProfiles: { datasourceUid: pyroscope }, serviceMap: { datasourceUid: mimir } } }
           - { name: pyroscope, uid: pyroscope, displayName: Pyroscope, type: grafana-pyroscope-datasource, url: "http://pyroscope.pyroscope.svc.cluster.local:4040", isDefault: false }
 
   loki:
@@ -321,7 +380,9 @@ applications:
         schemaConfig: { configs: [{ from: "2024-04-01", store: tsdb, object_store: s3, schema: v13, index: { prefix: loki_index_, period: 24h } }] }
         # MinIO는 virtual-host 방식의 `bucket.minio...` DNS를 제공하지 않으므로
         # path-style S3 요청을 강제한다.
-        storage: { type: s3, bucketNames: { chunks: loki, ruler: loki, admin: loki }, s3: { endpoint: "minio.minio.svc.cluster.local:9000", insecure: true, s3ForcePathStyle: true, accessKeyId: "${AWS_ACCESS_KEY_ID}", secretAccessKey: "${AWS_SECRET_ACCESS_KEY}" } }
+        # Boolean transport options are chart-typed values. 환경별 변경은
+        # applications.loki.values.loki.storage.s3에서 typed YAML로 덮어쓴다.
+        storage: { type: s3, bucketNames: { chunks: '{{ .Values.platform.objectStorage.buckets.loki }}', ruler: '{{ .Values.platform.objectStorage.buckets.loki }}', admin: '{{ .Values.platform.objectStorage.buckets.loki }}' }, s3: { endpoint: '{{ .Values.platform.objectStorage.endpoint }}', region: '{{ .Values.platform.objectStorage.region }}', insecure: true, s3ForcePathStyle: true, accessKeyId: "${AWS_ACCESS_KEY_ID}", secretAccessKey: "${AWS_SECRET_ACCESS_KEY}" } }
       minio: { enabled: false }
       gateway: { enabled: true }
       singleBinary: { replicas: 0 }
@@ -342,7 +403,7 @@ applications:
 
   mimir:
     enabled: true
-    namespace: monitoring-stack-server
+    namespace: '{{ .Values.platform.namespaces.monitoring }}'
     syncWave: "32"
     source: { type: helm, repoURL: "https://grafana.github.io/helm-charts", chart: mimir-distributed, targetRevision: 6.2.0 }
     values:
@@ -353,11 +414,11 @@ applications:
       mimir:
         structuredConfig:
           multitenancy_enabled: false
-          common: { storage: { backend: s3, s3: { endpoint: "minio.minio.svc.cluster.local:9000", insecure: true, access_key_id: "${AWS_ACCESS_KEY_ID}", secret_access_key: "${AWS_SECRET_ACCESS_KEY}" } } }
-          blocks_storage: { s3: { bucket_name: mimir-blocks, access_key_id: "${AWS_ACCESS_KEY_ID}", secret_access_key: "${AWS_SECRET_ACCESS_KEY}" } }
-          ruler_storage: { s3: { bucket_name: mimir-ruler, access_key_id: "${AWS_ACCESS_KEY_ID}", secret_access_key: "${AWS_SECRET_ACCESS_KEY}" } }
-          alertmanager_storage: { s3: { bucket_name: mimir-alertmanager, access_key_id: "${AWS_ACCESS_KEY_ID}", secret_access_key: "${AWS_SECRET_ACCESS_KEY}" } }
-          ingest_storage: { enabled: true, kafka: { address: "redpanda.redpanda.svc.cluster.local:9093", topic: mimir-ingest, auto_create_topic_enabled: true, auto_create_topic_default_partitions: 3 } }
+          common: { storage: { backend: s3, s3: { endpoint: '{{ .Values.platform.objectStorage.endpoint }}', region: '{{ .Values.platform.objectStorage.region }}', insecure: true, access_key_id: "${AWS_ACCESS_KEY_ID}", secret_access_key: "${AWS_SECRET_ACCESS_KEY}" } } }
+          blocks_storage: { s3: { bucket_name: '{{ .Values.platform.objectStorage.buckets.mimirBlocks }}', access_key_id: "${AWS_ACCESS_KEY_ID}", secret_access_key: "${AWS_SECRET_ACCESS_KEY}" } }
+          ruler_storage: { s3: { bucket_name: '{{ .Values.platform.objectStorage.buckets.mimirRuler }}', access_key_id: "${AWS_ACCESS_KEY_ID}", secret_access_key: "${AWS_SECRET_ACCESS_KEY}" } }
+          alertmanager_storage: { s3: { bucket_name: '{{ .Values.platform.objectStorage.buckets.mimirAlertmanager }}', access_key_id: "${AWS_ACCESS_KEY_ID}", secret_access_key: "${AWS_SECRET_ACCESS_KEY}" } }
+          ingest_storage: { enabled: true, kafka: { address: '{{ join "," .Values.platform.kafka.brokers }}', topic: '{{ .Values.platform.kafka.topics.mimirIngest }}', auto_create_topic_enabled: true, auto_create_topic_default_partitions: 3 } }
           ingester: { push_grpc_method_enabled: false }
       ingester: { replicas: 1 }
       store_gateway: { replicas: 1 }
@@ -366,7 +427,7 @@ applications:
 
   tempo:
     enabled: true
-    namespace: monitoring-stack-server
+    namespace: '{{ .Values.platform.namespaces.monitoring }}'
     syncWave: "32"
     source: { type: helm, repoURL: "https://grafana.github.io/helm-charts", chart: tempo-distributed, targetRevision: 1.61.3 }
     values:
@@ -374,10 +435,13 @@ applications:
         extraEnvFrom: [{ secretRef: { name: object-storage-credentials } }]
       multitenancyEnabled: false
       # tempo-distributed chart는 Tempo 저장소를 최상위 storage 값으로 렌더링한다.
-      storage: { trace: { backend: s3, s3: { endpoint: "minio.minio.svc.cluster.local:9000", insecure: true, bucket: tempo, access_key: "${AWS_ACCESS_KEY_ID}", secret_key: "${AWS_SECRET_ACCESS_KEY}" } } }
+      storage: { trace: { backend: s3, s3: { endpoint: '{{ .Values.platform.objectStorage.endpoint }}', region: '{{ .Values.platform.objectStorage.region }}', insecure: true, bucket: '{{ .Values.platform.objectStorage.buckets.tempo }}', access_key: "${AWS_ACCESS_KEY_ID}", secret_key: "${AWS_SECRET_ACCESS_KEY}" } } }
       traces:
         otlp: { grpc: { enabled: true }, http: { enabled: true } }
-        kafka: { brokers: ["redpanda.redpanda.svc.cluster.local:9093"], topic: tempo }
+        # tempo-distributed는 brokers를 YAML 배열로 받는다. 공통 기본값은 첫
+        # bootstrap broker를 사용하고, 다중 broker 환경은 env overlay에서 배열로
+        # 명시적으로 덮어쓴다.
+        kafka: { brokers: ['{{ index .Values.platform.kafka.brokers 0 }}'], topic: '{{ .Values.platform.kafka.topics.tempo }}' }
       # Traces Drilldown의 TraceQL metric과 Mimir의 RED/service graph 조회를 제공한다.
       metricsGenerator:
         enabled: true
@@ -390,7 +454,7 @@ applications:
             local_blocks: { filter_server_spans: false, flush_to_storage: true }
           storage:
             remote_write:
-              - url: "http://mimir-gateway.monitoring-stack-server.svc.cluster.local/api/v1/push"
+              - url: 'http://mimir-gateway.{{ .Values.platform.namespaces.monitoring }}.svc.cluster.local/api/v1/push'
       overrides:
         defaults:
           metrics_generator:
@@ -418,8 +482,8 @@ applications:
           storage:
             backend: s3
             s3:
-              endpoint: minio.minio.svc.cluster.local:9000
-              bucket_name: pyroscope
+              endpoint: '{{ .Values.platform.objectStorage.endpoint }}'
+              bucket_name: '{{ .Values.platform.objectStorage.buckets.pyroscope }}'
               access_key_id: ${AWS_ACCESS_KEY_ID}
               secret_access_key: ${AWS_SECRET_ACCESS_KEY}
               insecure: true
@@ -454,7 +518,7 @@ applications:
               forward_to = [prometheus.remote_write.mimir.receiver]
             }
             prometheus.remote_write "mimir" {
-              endpoint { url = "http://mimir-gateway.monitoring-stack-server.svc.cluster.local/api/v1/push" }
+              endpoint { url = "http://mimir-gateway.{{ .Values.platform.namespaces.monitoring }}.svc.cluster.local/api/v1/push" }
             }
 
   platform-gateway:
@@ -470,22 +534,22 @@ applications:
         uiListener: ui-https
         ingestListener: ingest-https
         issuer: { name: vault-pki, kind: Issuer }
-        vault: { server: "http://vault.vault.svc.cluster.local:8200", signPath: pki_int/sign/monitoring-server, kubernetesAuthMount: /v1/auth/kubernetes, issuerRole: cert-manager-issuer }
+        vault: { server: '{{ .Values.platform.vault.address }}', signPath: '{{ .Values.platform.vault.paths.gatewaySign }}', kubernetesAuthMount: '/v1/auth/{{ .Values.platform.vault.kubernetesAuthMount }}', issuerRole: '{{ .Values.platform.vault.roles.gatewayIssuer }}' }
         tls:
           uiSecretName: monitoring-ui-tls
           ingestSecretName: monitoring-ingest-tls
-          uiDnsNames: [grafana.dev.example.internal, argocd.dev.example.internal, keycloak.dev.example.internal, awx.dev.example.internal]
-          ingestDnsNames: [loki.ingest.dev.example.internal, mimir.ingest.dev.example.internal, tempo.ingest.dev.example.internal, pyroscope.ingest.dev.example.internal]
+          uiDnsNames: ['{{ .Values.platform.hosts.grafana }}', '{{ .Values.platform.hosts.argocd }}', '{{ .Values.platform.hosts.keycloak }}', '{{ .Values.platform.hosts.awx }}']
+          ingestDnsNames: ['{{ .Values.platform.hosts.lokiIngest }}', '{{ .Values.platform.hosts.mimirIngest }}', '{{ .Values.platform.hosts.tempoIngest }}', '{{ .Values.platform.hosts.pyroscopeIngest }}']
         uiRoutes:
-          - { name: grafana, namespace: grafana, hostname: grafana.dev.example.internal, service: grafana-service, port: 3000 }
-          - { name: keycloak, namespace: keycloak, hostname: keycloak.dev.example.internal, service: keycloak, port: 80 }
-          - { name: argocd, namespace: argocd, hostname: argocd.dev.example.internal, service: argocd-server, port: 80 }
-          - { name: awx, namespace: awx, hostname: awx.dev.example.internal, service: monitoring-awx-service, port: 80 }
+          - { name: grafana, namespace: grafana, hostname: '{{ .Values.platform.hosts.grafana }}', service: grafana-service, port: 3000 }
+          - { name: keycloak, namespace: keycloak, hostname: '{{ .Values.platform.hosts.keycloak }}', service: keycloak, port: 80 }
+          - { name: argocd, namespace: argocd, hostname: '{{ .Values.platform.hosts.argocd }}', service: argocd-server, port: 80 }
+          - { name: awx, namespace: awx, hostname: '{{ .Values.platform.hosts.awx }}', service: monitoring-awx-service, port: 80 }
         ingestionRoutes:
-          - { name: loki-ingest, namespace: loki, hostname: loki.ingest.dev.example.internal, service: loki-gateway, port: 80, basicAuthSecret: ingestion-basic-auth }
-          - { name: mimir-ingest, namespace: monitoring-stack-server, hostname: mimir.ingest.dev.example.internal, service: mimir-gateway, port: 80, basicAuthSecret: ingestion-basic-auth }
-          - { name: tempo-ingest, namespace: monitoring-stack-server, hostname: tempo.ingest.dev.example.internal, service: tempo-distributor, port: 4318, basicAuthSecret: ingestion-basic-auth }
-          - { name: pyroscope-ingest, namespace: pyroscope, hostname: pyroscope.ingest.dev.example.internal, service: pyroscope, port: 4040, basicAuthSecret: ingestion-basic-auth }
+          - { name: loki-ingest, namespace: loki, hostname: '{{ .Values.platform.hosts.lokiIngest }}', service: loki-gateway, port: 80, basicAuthSecret: ingestion-basic-auth }
+          - { name: mimir-ingest, namespace: '{{ .Values.platform.namespaces.monitoring }}', hostname: '{{ .Values.platform.hosts.mimirIngest }}', service: mimir-gateway, port: 80, basicAuthSecret: ingestion-basic-auth }
+          - { name: tempo-ingest, namespace: '{{ .Values.platform.namespaces.monitoring }}', hostname: '{{ .Values.platform.hosts.tempoIngest }}', service: tempo-distributor, port: 4318, basicAuthSecret: ingestion-basic-auth }
+          - { name: pyroscope-ingest, namespace: pyroscope, hostname: '{{ .Values.platform.hosts.pyroscopeIngest }}', service: pyroscope, port: 4040, basicAuthSecret: ingestion-basic-auth }
 
   awx-operator:
     enabled: true
@@ -515,21 +579,7 @@ applications:
         adminSecret: awx-admin
         oidcSecret: oidc-client-secrets
         image: "quay.io/ansible/awx-ee:24.6.1"
-        repository: "https://github.com/FlyingSnake/MonitoringStack.git"
-        revision: dev
-        vault: { server: "http://vault.vault.svc.cluster.local:8200", role: awx-agent, ingestionPath: monitoring/data/ingestion }
-        alloyEnvironment:
-          LOKI_URL: "https://loki.ingest.dev.example.internal/loki/api/v1/push"
-          MIMIR_REMOTE_WRITE_URL: "https://mimir.ingest.dev.example.internal/api/v1/push"
-          MONITORING_CLUSTER: dev
-          MONITORING_ENVIRONMENT: dev
-          PYROSCOPE_URL: "https://pyroscope.ingest.dev.example.internal"
-          TEMPO_OTLP_HTTP_ENDPOINT: "https://tempo.ingest.dev.example.internal"
-        alloyWindowsEnvironment:
-          LOKI_URL: "https://loki.ingest.dev.example.internal/loki/api/v1/push"
-          MIMIR_REMOTE_WRITE_URL: "https://mimir.ingest.dev.example.internal/api/v1/push"
-          MONITORING_CLUSTER: dev
-          MONITORING_ENVIRONMENT: dev
-          PYROSCOPE_URL: "https://pyroscope.ingest.dev.example.internal"
-          TEMPO_OTLP_HTTP_ENDPOINT: "https://tempo.ingest.dev.example.internal"
+        repository: '{{ .Values.repository.url }}'
+        revision: '{{ .Values.gitRevision }}'
+        environment: '{{ .Values.environment }}'
         alloyHostAliases: []

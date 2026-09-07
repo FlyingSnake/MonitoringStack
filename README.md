@@ -21,6 +21,10 @@ Grafana OSS 기반 중앙 관측성 플랫폼과 Grafana Alloy 에이전트를 G
 - 서버: `server/env/<dev|stg|prd>/values.yaml`
 - 에이전트: `agents/env/<dev|stg|prd>/<linux|windows|k8s>/values.yaml`
 
+서버 환경 values의 `platform`은 namespace, Vault 경로/role, S3 bucket·접속 방식,
+Kafka, Gateway host, Keycloak realm·그룹의 단일 계약입니다. AWX 플레이북은 agent
+환경 values를 직접 읽어 Alloy endpoint와 Vault 자동화 계약을 적용합니다.
+
 전체 아키텍처와 단계별 구현 순서는 [docs/IMPLEMENTATION_PLAN.md](docs/IMPLEMENTATION_PLAN.md)를 참고하세요.
 환경별 배포 승격 규칙은 [docs/BRANCH_STRATEGY.md](docs/BRANCH_STRATEGY.md)를 참고하세요.
 
@@ -38,8 +42,8 @@ Grafana OSS 기반 중앙 관측성 플랫폼과 Grafana Alloy 에이전트를 G
 `dev`에는 다음 선언형 구성이 구현되어 있으며, Kind 로컬 검증으로 동작을 확인했습니다.
 
 - Vault, cert-manager, External Secrets, Keycloak, MinIO, Redpanda, Grafana Operator, Loki, Mimir, Tempo, Pyroscope, blackbox exporter, 서버 Alloy, AWX를 Argo CD Application으로 분리했습니다.
-- 수집 경로는 `*.ingest.<환경>.<도메인>`으로 고정하고 Envoy Gateway의 HTTPS 서버 인증서와 HTTP Basic Auth를 사용합니다. UI/OIDC 경로는 별도의 `ui-https` listener를 사용합니다. mTLS 제거 변경은 현재 정적 검증을 마쳤으며, 다음 Argo CD 수동 Sync 후 로컬 수집 smoke를 다시 수행합니다.
-- AWX는 Git 인벤토리와 Job Template로 Kubernetes·Linux·Windows Alloy 역할을 관리합니다. Linux와 Kubernetes의 Vault 수집 자격증명 흐름은 구현·정적 검증됐으며, mTLS 제거 후 런타임 재검증은 다음 동기화 단계에서 수행합니다.
+- 수집 경로는 `*.ingest.<환경>.<도메인>`으로 고정하고 Envoy Gateway의 HTTPS 서버 인증서와 HTTP Basic Auth를 사용합니다. UI/OIDC 경로는 별도의 `ui-https` listener를 사용하며, 수집 클라이언트 mTLS는 사용하지 않습니다.
+- AWX는 Git 인벤토리와 Job Template로 Kubernetes·Linux·Windows Alloy 역할을 관리합니다. Kubernetes·Linux의 Vault Basic Auth 수집 자격증명 흐름은 Kind에서 검증했습니다.
 - Kind 테스트 워크로드는 Java, Go, Node.js와 .NET의 로그·메트릭·트레이스를 검증합니다. Apple Silicon ARM64에서는 현재 Pyroscope .NET profiler wrapper가 없어 .NET 프로파일만 안전하게 비활성화됩니다.
 
 로컬 실행과 smoke test 절차는 [scripts/local/README.md](scripts/local/README.md), 실제 구현 상태와 남은 작업은 [docs/IMPLEMENTATION_PLAN.md](docs/IMPLEMENTATION_PLAN.md)를 참고하세요.

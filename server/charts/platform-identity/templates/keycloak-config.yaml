@@ -10,13 +10,13 @@ data:
       "enabled": true,
       "displayName": "MonitoringStack",
       "groups": [
-        {"name": "platform-admin"},
-        {"name": "observability-viewer"}
+        {"name": {{ .Values.keycloak.groups.platformAdmin | quote }}},
+        {"name": {{ .Values.keycloak.groups.observabilityViewer | quote }} }
       ],
       "roles": {
         "realm": [
-          {"name": "platform-admin", "description": "Monitoring platform administrator"},
-          {"name": "observability-viewer", "description": "Observability read-only user"}
+          {"name": {{ .Values.keycloak.groups.platformAdmin | quote }}, "description": "Monitoring platform administrator"},
+          {"name": {{ .Values.keycloak.groups.observabilityViewer | quote }}, "description": "Observability read-only user"}
         ]
       },
       "clientScopes": [
@@ -54,8 +54,8 @@ data:
           "firstName": "Monitoring",
           "lastName": "Administrator",
           "email": "platform-admin@local.invalid",
-          "groups": ["platform-admin"],
-          "realmRoles": ["platform-admin"],
+          "groups": [{{ .Values.keycloak.groups.platformAdmin | quote }}],
+          "realmRoles": [{{ .Values.keycloak.groups.platformAdmin | quote }}],
           "credentials": [
             {"type": "password", "userLabel": "initial", "value": "$(env:MONITORING_BOOTSTRAP_PASSWORD)", "temporary": false}
           ]
@@ -217,10 +217,10 @@ spec:
                 sleep 1
               done
               test -f /work/ready
-              export VAULT_TOKEN="$(vault write -field=token auth/kubernetes/login \
+              export VAULT_TOKEN="$(vault write -field=token auth/${VAULT_KUBERNETES_AUTH_MOUNT}/login \
                 role="${VAULT_KUBERNETES_AUTH_ROLE}" \
                 jwt="$(cat /var/run/secrets/kubernetes.io/serviceaccount/token)")"
-              vault kv put monitoring/oidc \
+              vault kv put "${VAULT_OIDC_PATH}" \
                 argocd-client-secret="$(cat /work/argocd)" \
                 grafana-client-secret="$(cat /work/grafana)" \
                 awx-client-secret="$(cat /work/awx)" >/dev/null
@@ -229,6 +229,10 @@ spec:
               value: {{ .Values.keycloak.vaultAddress | quote }}
             - name: VAULT_KUBERNETES_AUTH_ROLE
               value: {{ .Values.keycloak.vaultKubernetesAuthRole | quote }}
+            - name: VAULT_KUBERNETES_AUTH_MOUNT
+              value: {{ .Values.keycloak.vaultKubernetesAuthMount | quote }}
+            - name: VAULT_OIDC_PATH
+              value: {{ .Values.keycloak.vaultOidcPath | quote }}
           volumeMounts:
             - name: oidc-client-secrets
               mountPath: /work

@@ -1,6 +1,8 @@
 # 서버 values 및 Vault 계약
 
-`common.yaml`에는 고정된 Helm chart 버전, Argo CD Application sync wave, 공통 서비스 설정을 둡니다. `server/env/<환경>/values.yaml`은 Git revision, 도메인, 기존 Gateway listener, Vault 방식, 스토리지와 복제본만 오버레이합니다.
+`common.yaml`에는 고정된 Helm chart 버전, Argo CD Application sync wave, 공통 서비스 설정을 둡니다. `server/env/<환경>/values.yaml`은 Git revision과 `platform` 환경 계약을 오버레이합니다.
+
+`platform`에는 backend namespace, Vault 주소·KV/Auth/PKI 경로·role, S3 endpoint/region/bucket, Kafka broker/topic/TLS·SASL Secret 참조, UI·ingest host, Keycloak realm·그룹, backend resource·retention 정책을 둡니다. Secret 값 자체는 Vault/ExternalSecret만 사용합니다. typed Helm 값(예: S3 `insecure`)은 해당 `applications.<backend>.values`에서 boolean으로 설정합니다.
 
 Keycloak과 MinIO의 Bitnami 기반 이미지는 제거된 기존 `bitnami/*` 태그 대신, 동일한 불변 태그를 보관하는 `bitnamilegacy/*` repository를 명시합니다. 차트나 이미지를 올릴 때는 Helm chart 버전과 이미지 태그를 함께 검증합니다.
 

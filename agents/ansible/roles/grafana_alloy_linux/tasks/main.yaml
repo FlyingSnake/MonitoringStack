@@ -1,4 +1,16 @@
 ---
+- name: Linux Alloy 필수 환경 계약 검증
+  ansible.builtin.assert:
+    that:
+      - alloy_version | length > 0
+      - alloy_config_repository | length > 0
+      - alloy_config_revision | length > 0
+      - alloy_config_module_path | length > 0
+      - alloy_environment.LOKI_URL | default('') | length > 0
+      - alloy_environment.MIMIR_REMOTE_WRITE_URL | default('') | length > 0
+      - alloy_environment.TEMPO_OTLP_HTTP_ENDPOINT | default('') | length > 0
+      - alloy_environment.PYROSCOPE_URL | default('') | length > 0
+
 - name: Alloy 시스템 사용자 생성
   ansible.builtin.user:
     name: alloy

@@ -24,6 +24,9 @@ for environment in dev stg prd; do
       failures << "endpoints.#{endpoint}" unless value.start_with?("https://") && value.include?(".ingest.#{environment}.")
     end
     failures << "security.authSecretRef" if values.dig("security", "authSecretRef").to_s.empty?
+    %w[address kubernetesRole ingestionPath].each do |key|
+      failures << "automation.vault.#{key}" if values.dig("automation", "vault", key).to_s.empty?
+    end
     %w[logs metrics traces].each do |feature|
       failures << "features.#{feature}" unless values.dig("features", feature) == true
     end
@@ -71,7 +74,7 @@ rg -q 'INGEST_USERNAME' agents/ansible/roles/grafana_alloy_windows_credentials/t
 ! rg -q 'pki_int/issue/monitoring-client' agents/ansible/roles/grafana_alloy_windows_credentials
 rg -q 'import\.git' agents/ansible/roles/grafana_alloy_windows/templates/config.alloy.j2
 rg -q 'EventLog|eventlog' agents/alloy/modules/windows/alloy.alloy
-rg -q 'alloyWindowsEnvironment' server/charts/awx-config/templates/config.yaml
+rg -q 'agentEnvironmentOverrides\.windows' server/charts/awx-config/templates/config.yaml
 rg -q 'windowsCredential' server/charts/awx-config/templates/config.yaml
 rg -q 'additionalExternalSecrets' server/charts/platform-secrets/templates/secrets.yaml
 

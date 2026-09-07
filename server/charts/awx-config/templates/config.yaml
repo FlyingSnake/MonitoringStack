@@ -90,14 +90,13 @@ data:
             playbook: agents/ansible/playbooks/install-alloy-kubernetes.yaml
             execution_environment: MonitoringStack AWX EE
             extra_vars:
-              monitoring_environment: dev
-              vault_addr: {{ .Values.awx.vault.server | quote }}
-              vault_kubernetes_role: {{ .Values.awx.vault.role | quote }}
-              vault_ingestion_path: {{ .Values.awx.vault.ingestionPath | quote }}
+              monitoring_environment: {{ .Values.awx.environment | quote }}
               alloy_config_repository: {{ .Values.awx.repository | quote }}
               alloy_config_revision: {{ .Values.awx.revision | quote }}
+              {{- with .Values.awx.agentEnvironmentOverrides.k8s }}
               alloy_environment:
-{{ toYaml .Values.awx.alloyEnvironment | nindent 16 }}
+{{ toYaml . | nindent 16 }}
+              {{- end }}
               alloy_host_aliases:
 {{ toYaml .Values.awx.alloyHostAliases | nindent 16 }}
             state: present
@@ -109,14 +108,13 @@ data:
             playbook: agents/ansible/playbooks/install-alloy-linux.yaml
             execution_environment: MonitoringStack AWX EE
             extra_vars:
-              monitoring_environment: dev
-              vault_addr: {{ .Values.awx.vault.server | quote }}
-              vault_kubernetes_role: {{ .Values.awx.vault.role | quote }}
-              vault_ingestion_path: {{ .Values.awx.vault.ingestionPath | quote }}
+              monitoring_environment: {{ .Values.awx.environment | quote }}
               alloy_config_repository: {{ .Values.awx.repository | quote }}
               alloy_config_revision: {{ .Values.awx.revision | quote }}
+              {{- with .Values.awx.agentEnvironmentOverrides.linux }}
               alloy_environment:
-{{ toYaml .Values.awx.alloyEnvironment | nindent 16 }}
+{{ toYaml . | nindent 16 }}
+              {{- end }}
             state: present
         - awx.awx.job_template:
             name: "Install Alloy - dev Windows"
@@ -126,14 +124,13 @@ data:
             playbook: agents/ansible/playbooks/install-alloy-windows.yaml
             execution_environment: MonitoringStack AWX EE
             extra_vars:
-              monitoring_environment: dev
-              vault_addr: {{ .Values.awx.vault.server | quote }}
-              vault_kubernetes_role: {{ .Values.awx.vault.role | quote }}
-              vault_ingestion_path: {{ .Values.awx.vault.ingestionPath | quote }}
+              monitoring_environment: {{ .Values.awx.environment | quote }}
               alloy_config_repository: {{ .Values.awx.repository | quote }}
               alloy_config_revision: {{ .Values.awx.revision | quote }}
+              {{- with .Values.awx.agentEnvironmentOverrides.windows }}
               alloy_environment:
-{{ toYaml .Values.awx.alloyWindowsEnvironment | nindent 16 }}
+{{ toYaml . | nindent 16 }}
+              {{- end }}
             state: present
 {{- if .Values.awx.windowsCredential.enabled }}
         - name: Windows WinRM 사용자명 Secret 존재 여부 확인
@@ -175,14 +172,13 @@ data:
             execution_environment: MonitoringStack AWX EE
             credentials: [{{ .Values.awx.windowsCredential.credentialName | quote }}]
             extra_vars:
-              monitoring_environment: dev
-              vault_addr: {{ .Values.awx.vault.server | quote }}
-              vault_kubernetes_role: {{ .Values.awx.vault.role | quote }}
-              vault_ingestion_path: {{ .Values.awx.vault.ingestionPath | quote }}
+              monitoring_environment: {{ .Values.awx.environment | quote }}
               alloy_config_repository: {{ .Values.awx.repository | quote }}
               alloy_config_revision: {{ .Values.awx.revision | quote }}
+              {{- with .Values.awx.agentEnvironmentOverrides.windows }}
               alloy_environment:
-{{ toYaml .Values.awx.alloyWindowsEnvironment | nindent 16 }}
+{{ toYaml . | nindent 16 }}
+              {{- end }}
             state: present
           when:
             - monitoring_windows_winrm_username.stat.exists
@@ -238,14 +234,13 @@ data:
             execution_environment: MonitoringStack AWX EE
             credentials: [{{ .Values.awx.linuxTest.credentialName | quote }}]
             extra_vars:
-              monitoring_environment: dev
-              vault_addr: {{ .Values.awx.vault.server | quote }}
-              vault_kubernetes_role: {{ .Values.awx.vault.role | quote }}
-              vault_ingestion_path: {{ .Values.awx.vault.ingestionPath | quote }}
+              monitoring_environment: {{ .Values.awx.environment | quote }}
               alloy_config_repository: {{ .Values.awx.repository | quote }}
               alloy_config_revision: {{ .Values.awx.revision | quote }}
+              {{- with .Values.awx.agentEnvironmentOverrides.linux }}
               alloy_environment:
-{{ toYaml .Values.awx.alloyEnvironment | nindent 16 }}
+{{ toYaml . | nindent 16 }}
+              {{- end }}
             state: present
           when: monitoring_linux_fixture_ssh_key.stat.exists
 {{- end }}

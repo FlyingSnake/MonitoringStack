@@ -4,6 +4,21 @@ set -euo pipefail
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 repo_root="$(cd "${script_dir}/../.." && pwd)"
 state_dir="${repo_root}/local/server/.vault"
+source "${script_dir}/lib.sh"
+telemetry_load_config
+gateway_resolve_address="$(telemetry_value "${telemetry_values_file}" gateway resolveAddress)"
+loki_host="$(telemetry_value "${telemetry_values_file}" gateway hosts loki)"
+mimir_host="$(telemetry_value "${telemetry_values_file}" gateway hosts mimir)"
+tempo_namespace="$(telemetry_value "${telemetry_values_file}" tempo namespace)"
+tempo_service="$(telemetry_value "${telemetry_values_file}" tempo service)"
+tempo_port="$(telemetry_value "${telemetry_values_file}" tempo localPort)"
+pyroscope_namespace="$(telemetry_value "${telemetry_values_file}" pyroscope namespace)"
+pyroscope_service="$(telemetry_value "${telemetry_values_file}" pyroscope service)"
+pyroscope_port="$(telemetry_value "${telemetry_values_file}" pyroscope localPort)"
+vault_namespace="$(telemetry_value "${telemetry_values_file}" vault namespace)"
+vault_pod="$(telemetry_value "${telemetry_values_file}" vault pod)"
+vault_ingestion_path="$(telemetry_value "${telemetry_values_file}" vault ingestionPath)"
+kubectl config use-context "${telemetry_cluster_context}" >/dev/null
 
 if [[ ! -f "${state_dir}/init.json" ]]; then
   echo "로컬 Vault 인증 자료가 없습니다. local/server/bootstrap-vault.sh를 먼저 실행하세요." >&2
@@ -11,13 +26,13 @@ if [[ ! -f "${state_dir}/init.json" ]]; then
 fi
 
 root_token="$(ruby -rjson -e 'puts JSON.parse(File.read(ARGV[0])).fetch("root_token")' "${state_dir}/init.json")"
-ingestion_password="$(kubectl -n vault exec vault-0 -- env VAULT_TOKEN="${root_token}" vault kv get -field=password monitoring/ingestion)"
+ingestion_password="$(kubectl -n "${vault_namespace}" exec "${vault_pod}" -- env VAULT_TOKEN="${root_token}" vault kv get -field=password "${vault_ingestion_path}")"
 
 gateway_status() {
   local endpoint_host="$1"
   local endpoint_path="$2"
   local authentication="$3"
-  local args=(--silent --output /dev/null --write-out '%{http_code}' --resolve "${endpoint_host}:443:127.0.0.1")
+  local args=(--silent --output /dev/null --write-out '%{http_code}' --resolve "${endpoint_host}:443:${gateway_resolve_address}")
   if [[ "${authentication}" == "basic" || "${authentication}" == "full" ]]; then
     args+=(--user "alloy:${ingestion_password}")
   fi
@@ -30,7 +45,7 @@ gateway_query() {
   local result_file="$3"
 
   curl --silent --show-error --fail \
-    --resolve "${endpoint_host}:443:127.0.0.1" \
+    --resolve "${endpoint_host}:443:${gateway_resolve_address}" \
     --user "alloy:${ingestion_password}" \
     "https://${endpoint_host}${endpoint_path}" > "${result_file}"
 }
@@ -51,11 +66,11 @@ trap cleanup EXIT
 
 loki_result="${work_dir}/loki.json"
 mimir_result="${work_dir}/mimir.json"
-gateway_query loki-ingest.demo.flyingsnake.xyz '/loki/api/v1/query_range?query=%7Bnamespace%3D%22telemetry-workloads%22%7D&limit=100' "${loki_result}"
-gateway_query mimir-ingest.demo.flyingsnake.xyz '/prometheus/api/v1/query?query=telemetry_workload_heartbeat_total' "${mimir_result}"
+gateway_query "${loki_host}" "/loki/api/v1/query_range?query=%7Bnamespace%3D%22${telemetry_namespace}%22%7D&limit=100" "${loki_result}"
+gateway_query "${mimir_host}" '/prometheus/api/v1/query?query=telemetry_workload_heartbeat_total' "${mimir_result}"
 
-[[ "$(gateway_status loki-ingest.demo.flyingsnake.xyz /loki/api/v1/labels basic)" == "200" ]]
-[[ "$(gateway_status loki-ingest.demo.flyingsnake.xyz /loki/api/v1/labels none)" == "401" ]]
+[[ "$(gateway_status "${loki_host}" /loki/api/v1/labels basic)" == "200" ]]
+[[ "$(gateway_status "${loki_host}" /loki/api/v1/labels none)" == "401" ]]
 policy_statuses="$(kubectl get securitypolicies.gateway.envoyproxy.io -A -o jsonpath='{range .items[*]}{range .status.ancestors[0].conditions[?(@.type=="Accepted")]}{.status}{"\n"}{end}{end}')"
 [[ -n "${policy_statuses}" ]]
 ! grep -qv '^True$' <<< "${policy_statuses}"
@@ -84,18 +99,18 @@ ruby -rjson -e '
 ' "${mimir_result}"
 
 port_log="${work_dir}/tempo-port-forward.log"
-kubectl -n monitoring-stack-server port-forward service/tempo-query-frontend 13200:3200 >"${port_log}" 2>&1 &
+kubectl -n "${tempo_namespace}" port-forward "service/${tempo_service}" "${tempo_port}:3200" >"${port_log}" 2>&1 &
 forward_pid=$!
 
 for _ in $(seq 1 20); do
-  curl --silent --fail http://127.0.0.1:13200/ready >/dev/null 2>&1 && break
+  curl --silent --fail "http://127.0.0.1:${tempo_port}/ready" >/dev/null 2>&1 && break
   sleep 1
 done
 
 for service_name in telemetry.dotnet telemetry.java telemetry.go telemetry.nodejs; do
   tempo_result="${work_dir}/tempo-${service_name}.json"
   curl --silent --show-error --fail --get --data-urlencode "tags=service.name=${service_name}" \
-    http://127.0.0.1:13200/api/search > "${tempo_result}"
+    "http://127.0.0.1:${tempo_port}/api/search" > "${tempo_result}"
   ruby -rjson -e '
     data = JSON.parse(File.read(ARGV[0]))
     traces = data["traces"] || data.dig("data", "traces") || []
@@ -105,10 +120,10 @@ for service_name in telemetry.dotnet telemetry.java telemetry.go telemetry.nodej
 done
 
 pyroscope_port_log="${work_dir}/pyroscope-port-forward.log"
-kubectl -n pyroscope port-forward service/pyroscope 14040:4040 >"${pyroscope_port_log}" 2>&1 &
+kubectl -n "${pyroscope_namespace}" port-forward "service/${pyroscope_service}" "${pyroscope_port}:4040" >"${pyroscope_port_log}" 2>&1 &
 pyroscope_forward_pid=$!
 for _ in $(seq 1 20); do
-  curl --silent --fail http://127.0.0.1:14040/ready >/dev/null 2>&1 && break
+  curl --silent --fail "http://127.0.0.1:${pyroscope_port}/ready" >/dev/null 2>&1 && break
   sleep 1
 done
 
@@ -117,7 +132,7 @@ start_millis="$(( now_millis - 900000 ))"
 pyroscope_result="${work_dir}/pyroscope.json"
 curl --silent --show-error --fail -H 'Content-Type: application/json' \
   --data "{\"matchers\":[],\"labelNames\":[\"service_name\",\"__profile_type__\"],\"start\":${start_millis},\"end\":${now_millis}}" \
-  http://127.0.0.1:14040/querier.v1.QuerierService/Series > "${pyroscope_result}"
+  "http://127.0.0.1:${pyroscope_port}/querier.v1.QuerierService/Series" > "${pyroscope_result}"
 ruby -rjson -e '
   data = JSON.parse(File.read(ARGV[0]))
   profiles = data.fetch("labelsSet", [])

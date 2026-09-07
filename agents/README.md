@@ -10,7 +10,7 @@
 agents/env/<environment>/<target>/values.yaml
 ```
 
-`<environment>`는 `dev`, `stg`, `prd`이고 `<target>`은 `linux`, `windows`, `k8s`입니다. 각 파일은 활성화 여부, 인벤토리 소스, 고정된 Alloy 버전, 원격 설정 리비전, 엔드포인트 참조, 레이블, 리소스 제한, Secret 참조를 제어합니다.
+`<environment>`는 `dev`, `stg`, `prd`이고 `<target>`은 `linux`, `windows`, `k8s`입니다. 각 파일은 활성화 여부, 인벤토리 소스, 고정된 Alloy/Helm 버전, 원격 설정 리비전, endpoint, Vault 자동화 경로·role, 레이블, 기능 및 Secret 참조를 제어합니다.
 
 ## 구현 구조
 
@@ -26,7 +26,7 @@ agents/
 └── env/              # 환경 및 대상별 values
 ```
 
-AWX는 이 Git 저장소에서 Project를 동기화합니다. 인벤토리 내용과 Ansible 코드는 함께 검토·버전 관리하며, Organization·실행 환경·SCM Project·Inventory·Job Template은 AWX Config Job으로 선언합니다. 호스트에는 최소 로컬 Alloy bootstrap 설정만 유지하고, 수집 파이프라인은 `import.git`으로 이 저장소에서 가져옵니다.
+AWX는 이 Git 저장소에서 Project를 동기화합니다. Job Template은 `monitoring_environment`만 전달하고 playbook이 `agents/env/<환경>/<대상>/values.yaml`을 직접 읽으므로 server AWX 설정과 agent endpoint가 중복되지 않습니다. 호스트에는 최소 로컬 Alloy bootstrap 설정만 유지하고, 수집 파이프라인은 `import.git`으로 이 저장소에서 가져옵니다.
 
 ## 수집 보안 계약
 

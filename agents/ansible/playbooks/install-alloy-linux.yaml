@@ -3,6 +3,28 @@
   hosts: alloy_linux
   become: true
   gather_facts: true
+  pre_tasks:
+    - name: Linux Alloy 환경 계약 로드
+      ansible.builtin.include_vars:
+        file: "{{ playbook_dir }}/../../env/{{ monitoring_environment }}/linux/values.yaml"
+        name: monitoring_agent_config
+    - name: Linux Alloy 환경 계약 적용
+      ansible.builtin.set_fact:
+        alloy_version: "{{ monitoring_agent_config.alloy.version }}"
+        alloy_config_repository: "{{ monitoring_agent_config.alloy.config.repository }}"
+        alloy_config_revision: "{{ monitoring_agent_config.alloy.config.revision }}"
+        alloy_config_module_path: "{{ monitoring_agent_config.alloy.config.modulePath }}"
+        alloy_config_pull_frequency: "{{ monitoring_agent_config.alloy.config.pullFrequency }}"
+        alloy_environment:
+          LOKI_URL: "{{ monitoring_agent_config.endpoints.loki }}"
+          MIMIR_REMOTE_WRITE_URL: "{{ monitoring_agent_config.endpoints.mimir }}"
+          TEMPO_OTLP_HTTP_ENDPOINT: "{{ monitoring_agent_config.endpoints.tempoHttp }}"
+          PYROSCOPE_URL: "{{ monitoring_agent_config.endpoints.pyroscope }}"
+          MONITORING_ENVIRONMENT: "{{ monitoring_agent_config.environment }}"
+          MONITORING_CLUSTER: "{{ monitoring_agent_config.cluster }}"
+        vault_addr: "{{ monitoring_agent_config.automation.vault.address }}"
+        vault_kubernetes_role: "{{ monitoring_agent_config.automation.vault.kubernetesRole }}"
+        vault_ingestion_path: "{{ monitoring_agent_config.automation.vault.ingestionPath }}"
   roles:
     - role: grafana_alloy_linux
     - role: grafana_alloy_linux_credentials

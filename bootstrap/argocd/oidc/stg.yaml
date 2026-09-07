@@ -1,8 +1,0 @@
-configs:
-  cm:
-    oidc.config: |
-      name: Keycloak
-      issuer: https://keycloak.stg.example.internal/realms/monitoring
-      clientID: argocd
-      clientSecret: $oidc.keycloak.clientSecret
-      requestedScopes: ["openid", "profile", "email", "groups"]

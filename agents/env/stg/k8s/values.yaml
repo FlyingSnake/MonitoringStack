@@ -1,9 +1,11 @@
 environment: stg
+cluster: stg
 target: k8s
 enabled: true
 inventory: { source: agents/ansible/inventories/stg/k8s/hosts.yml }
 alloy:
   version: 1.19.2
+  chartVersion: 1.12.1
   config: { repository: "https://github.com/FlyingSnake/MonitoringStack.git", revision: stg, modulePath: agents/alloy/modules/kubernetes/alloy.alloy, pullFrequency: 5m }
 endpoints:
   loki: https://loki.ingest.stg.example.internal/loki/api/v1/push
@@ -11,4 +13,5 @@ endpoints:
   tempoHttp: https://tempo.ingest.stg.example.internal
   pyroscope: https://pyroscope.ingest.stg.example.internal
 security: { authSecretRef: alloy-write-credentials }
+automation: { vault: { address: "http://vault.vault.svc.cluster.local:8200", kubernetesRole: awx-agent, ingestionPath: monitoring/data/ingestion } }
 features: { logs: true, metrics: true, traces: true, profiling: false }

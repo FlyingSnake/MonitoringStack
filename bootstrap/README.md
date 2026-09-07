@@ -9,6 +9,8 @@ kubectl apply -f bootstrap/root-applications/dev.yaml
 
 `ENVIRONMENT`는 `dev`, `stg`, `prd` 중 하나입니다. 실행 전 해당 환경의 Gateway, Vault, S3 관련 값을 `server/env/<환경>/values.yaml`에 채워야 합니다.
 
+`--enable-oidc`를 추가하면 installer가 같은 환경 values의 `platform.hosts`, `platform.identity`에서 Argo CD domain, Keycloak issuer, 그룹 RBAC을 렌더링합니다. 별도 OIDC values 파일을 수정하지 않습니다.
+
 External Secrets CRD는 최초 설치 시 server-side apply가 필요합니다. 따라서 Argo CD 설치 전에 다음을 한 번 실행합니다.
 
 ```bash

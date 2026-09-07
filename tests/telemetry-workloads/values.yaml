@@ -1,0 +1,21 @@
+# 로컬 텔레메트리 smoke의 비밀이 아닌 연결 계약이다. 인증 자격증명은 Vault에서만 읽는다.
+clusterContext: kind-monitoring-local
+kindClusterName: monitoring-local
+namespace: telemetry-workloads
+gateway:
+  resolveAddress: 127.0.0.1
+  hosts:
+    loki: loki-ingest.demo.flyingsnake.xyz
+    mimir: mimir-ingest.demo.flyingsnake.xyz
+tempo:
+  namespace: monitoring-stack-server
+  service: tempo-query-frontend
+  localPort: 13200
+pyroscope:
+  namespace: pyroscope
+  service: pyroscope
+  localPort: 14040
+vault:
+  namespace: vault
+  pod: vault-0
+  ingestionPath: monitoring/ingestion

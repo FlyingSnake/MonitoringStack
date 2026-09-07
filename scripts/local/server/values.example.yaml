@@ -4,6 +4,16 @@
 gitRevision: dev
 repository:
   url: git://host.docker.internal:9418/MonitoringStack.git
+platform:
+  hosts:
+    grafana: grafana.demo.flyingsnake.xyz
+    argocd: argocd.demo.flyingsnake.xyz
+    keycloak: keycloak.demo.flyingsnake.xyz
+    awx: awx.demo.flyingsnake.xyz
+    lokiIngest: loki-ingest.demo.flyingsnake.xyz
+    mimirIngest: mimir-ingest.demo.flyingsnake.xyz
+    tempoIngest: tempo-ingest.demo.flyingsnake.xyz
+    pyroscopeIngest: pyroscope-ingest.demo.flyingsnake.xyz
 project:
   sourceRepos:
     - git://host.docker.internal:9418/MonitoringStack.git
@@ -138,21 +148,16 @@ applications:
           port: 2222
           username: alloytest
           credentialSecret: monitoring-linux-test-ssh
-        alloyEnvironment:
-          LOKI_URL: https://loki-ingest.demo.flyingsnake.xyz/loki/api/v1/push
-          MIMIR_REMOTE_WRITE_URL: https://mimir-ingest.demo.flyingsnake.xyz/api/v1/push
-          MONITORING_CLUSTER: local-kind
-          MONITORING_ENVIRONMENT: dev
-          PYROSCOPE_URL: https://pyroscope-ingest.demo.flyingsnake.xyz
-          TEMPO_OTLP_HTTP_ENDPOINT: https://tempo-ingest.demo.flyingsnake.xyz
-          # Let's Encrypt Gateway 인증서는 Alloy의 OS 신뢰 저장소로 검증한다.
-        alloyWindowsEnvironment:
-          LOKI_URL: https://loki-ingest.demo.flyingsnake.xyz/loki/api/v1/push
-          MIMIR_REMOTE_WRITE_URL: https://mimir-ingest.demo.flyingsnake.xyz/api/v1/push
-          MONITORING_CLUSTER: local-kind
-          MONITORING_ENVIRONMENT: dev
-          PYROSCOPE_URL: https://pyroscope-ingest.demo.flyingsnake.xyz
-          TEMPO_OTLP_HTTP_ENDPOINT: https://tempo-ingest.demo.flyingsnake.xyz
+        agentEnvironmentOverrides:
+          k8s: &localAlloyEnvironment
+            LOKI_URL: https://loki-ingest.demo.flyingsnake.xyz/loki/api/v1/push
+            MIMIR_REMOTE_WRITE_URL: https://mimir-ingest.demo.flyingsnake.xyz/api/v1/push
+            MONITORING_CLUSTER: local-kind
+            MONITORING_ENVIRONMENT: dev
+            PYROSCOPE_URL: https://pyroscope-ingest.demo.flyingsnake.xyz
+            TEMPO_OTLP_HTTP_ENDPOINT: https://tempo-ingest.demo.flyingsnake.xyz
+          linux: *localAlloyEnvironment
+          windows: *localAlloyEnvironment
         alloyHostAliases:
           - ip: 10.96.190.65
             hostnames:

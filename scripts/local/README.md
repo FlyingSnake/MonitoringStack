@@ -5,6 +5,7 @@
 ## 준비
 
 1. `scripts/local/server/values.example.yaml`을 `local/server/values.yaml`로 복사하고 Kind API endpoint, Gateway ClusterIP를 현재 Docker 네트워크에 맞춘다. Let’s Encrypt 인증서는 기본적으로 `local/letsencrypt/config/live/demo.flyingsnake.xyz/{fullchain.pem,privkey.pem}`에서 읽는다.
+2. 텔레메트리 smoke의 비밀이 아닌 cluster, Gateway host, backend Service 연결값은 `tests/telemetry-workloads/values.yaml`에서 조정한다. 인증 자격증명은 Vault runtime state에서만 읽는다.
 2. Docker Desktop을 시작한 뒤 `scripts/local/server/create-cluster.sh`, `scripts/local/server/install-gateway.sh`, `scripts/local/git-server/start.sh`, `scripts/local/server/deploy-gitops.sh`를 실행한다.
 3. Argo CD Application을 수동 Sync하고 Vault가 Running 상태가 되면 `scripts/local/server/bootstrap-vault.sh`를 실행한다. 자동 Sync는 사용하지 않는다. 로컬 Vault가 비영속 상태로 초기화된 경우에도 이 스크립트는 기존 ExternalSecret target Secret의 Keycloak·PostgreSQL·MinIO·AWX·Alloy 수집 자격증명을 새 Vault에 먼저 복원한다. 따라서 실행 중인 stateful 서비스와 자격증명이 불일치하지 않는다. 처음 설치처럼 target Secret이 없을 때만 새 값을 생성한다. 이후 `platform-secrets`를 동기화하고 `make local-k8s-alloy-smoke`로 Alloy가 갱신된 Basic Auth 자격증명을 읽도록 다시 배포한다.
 4. `platform-identity`를 동기화한다. `keycloak-config` Hook은 Keycloak이 생성한 confidential OIDC client secret을 Vault에 기록한다. 그 뒤 `platform-secrets`를 한 번 더 동기화해야 Grafana·Argo CD·AWX가 같은 client secret을 ExternalSecret으로 받는다. 이 순서는 OIDC client secret을 Git이나 values에 저장하지 않기 위한 계약이다.

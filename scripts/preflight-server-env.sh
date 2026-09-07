@@ -23,6 +23,14 @@ helm "${helm_args[@]}" > "${rendered_file}"
 
 ruby -ryaml -e '
   environment, values_path, overlay_path, rendered_path = ARGV
+  environment_values = YAML.load_file(values_path)
+  platform = environment_values.fetch("platform")
+  platform_namespaces = platform.fetch("namespaces")
+  platform_vault = platform.fetch("vault")
+  platform_storage = platform.fetch("objectStorage")
+  platform_kafka = platform.fetch("kafka")
+  platform_hosts = platform.fetch("hosts")
+  platform_identity = platform.fetch("identity")
   applications = YAML.load_stream(File.read(rendered_path)).compact
   find_application = lambda do |name|
     application = applications.find { |item| item.dig("kind") == "Application" && item.dig("metadata", "name") == name }
@@ -37,6 +45,29 @@ ruby -ryaml -e '
   end
 
   applications.each { |application| reject_placeholders.call(application, "rendered #{application.dig("metadata", "name")}") }
+
+  abort("platform monitoring namespace is required") if platform_namespaces.fetch("monitoring").to_s.empty?
+  %w[address kvMount kubernetesAuthMount].each { |key| abort("platform vault #{key} is required") if platform_vault.fetch(key).to_s.empty? }
+  %w[secretStore gatewayIssuer keycloakConfig awxAgent].each { |key| abort("platform vault role #{key} is required") if platform_vault.fetch("roles").fetch(key).to_s.empty? }
+  %w[ingestion oidc gatewaySign].each { |key| abort("platform vault path #{key} is required") if platform_vault.fetch("paths").fetch(key).to_s.empty? }
+  abort("platform object storage endpoint is required") if platform_storage.fetch("endpoint").to_s.empty?
+  abort("platform object storage insecure must be boolean") unless [true, false].include?(platform_storage.fetch("insecure"))
+  %w[loki tempo mimirBlocks mimirRuler mimirAlertmanager pyroscope].each do |bucket|
+    abort("platform object storage bucket #{bucket} is required") if platform_storage.fetch("buckets").fetch(bucket).to_s.empty?
+  end
+  abort("platform Kafka brokers are required") if platform_kafka.fetch("brokers").empty?
+  %w[mimirIngest tempo].each { |topic| abort("platform Kafka topic #{topic} is required") if platform_kafka.fetch("topics").fetch(topic).to_s.empty? }
+  abort("platform identity realm is required") if platform_identity.fetch("realm").to_s.empty?
+
+  loki_storage = application_values.call("loki").dig("loki", "storage") || {}
+  abort("Loki bucket does not match platform object storage contract") unless loki_storage.dig("bucketNames", "chunks") == platform_storage.dig("buckets", "loki")
+  mimir_config = application_values.call("mimir").dig("mimir", "structuredConfig") || {}
+  abort("Mimir blocks bucket does not match platform object storage contract") unless mimir_config.dig("blocks_storage", "s3", "bucket_name") == platform_storage.dig("buckets", "mimirBlocks")
+  mimir_kafka = mimir_config.dig("ingest_storage", "kafka") || {}
+  abort("Mimir Kafka topic does not match platform Kafka contract") unless mimir_kafka["topic"] == platform_kafka.dig("topics", "mimirIngest")
+  tempo_values = application_values.call("tempo")
+  abort("Tempo bucket does not match platform object storage contract") unless tempo_values.dig("storage", "trace", "s3", "bucket") == platform_storage.dig("buckets", "tempo")
+  abort("Tempo Kafka topic does not match platform Kafka contract") unless tempo_values.dig("traces", "kafka", "topic") == platform_kafka.dig("topics", "tempo")
 
   gateway = application_values.call("platform-gateway").fetch("gateway")
   %w[name namespace uiListener ingestListener].each { |key| abort("Gateway #{key} is required") if gateway[key].to_s.empty? }
@@ -59,6 +90,18 @@ ruby -ryaml -e '
   else
     expected_fragment = ".#{environment}."
     abort("Gateway DNS names do not match #{environment} environment") unless hosts.all? { |host| host.include?(expected_fragment) }
+  end
+
+  unless localhost_overlay || demo_overlay
+    expected_hosts = {
+      "grafana" => platform_hosts.fetch("grafana"), "argocd" => platform_hosts.fetch("argocd"),
+      "keycloak" => platform_hosts.fetch("keycloak"), "awx" => platform_hosts.fetch("awx"),
+      "loki-ingest" => platform_hosts.fetch("lokiIngest"), "mimir-ingest" => platform_hosts.fetch("mimirIngest"),
+      "tempo-ingest" => platform_hosts.fetch("tempoIngest"), "pyroscope-ingest" => platform_hosts.fetch("pyroscopeIngest")
+    }
+    (gateway.fetch("uiRoutes") + gateway.fetch("ingestionRoutes")).each do |route|
+      abort("Gateway host contract does not match platform.hosts for #{route.fetch("name")}") unless route.fetch("hostname") == expected_hosts.fetch(route.fetch("name"))
+    end
   end
 
   vault = application_values.call("vault")
@@ -86,9 +129,16 @@ ruby -ryaml -e '
     %w[linux windows k8s].each do |target|
       agent = YAML.load_file("agents/env/#{environment}/#{target}/values.yaml")
       abort("#{target} agent revision must be #{expected_revision}") unless agent.dig("alloy", "config", "revision") == expected_revision
-      agent.fetch("endpoints").each_value do |url|
-        abort("#{target} agent endpoint does not match environment domain: #{url}") unless url.include?(".#{environment}.")
-      end
+      endpoints = agent.fetch("endpoints")
+      expected_endpoints = {
+        "loki" => "https://#{platform_hosts.fetch("lokiIngest")}/loki/api/v1/push",
+        "mimir" => "https://#{platform_hosts.fetch("mimirIngest")}/api/v1/push",
+        "tempoHttp" => "https://#{platform_hosts.fetch("tempoIngest")}",
+        "pyroscope" => "https://#{platform_hosts.fetch("pyroscopeIngest") }"
+      }
+      abort("#{target} agent endpoint contract differs from platform.hosts") unless endpoints == expected_endpoints
+      automation_vault = agent.dig("automation", "vault") || {}
+      abort("#{target} agent Vault automation contract is incomplete") unless %w[address kubernetesRole ingestionPath].all? { |key| automation_vault[key].to_s.length > 0 }
     end
   end
 ' "${environment}" "${values_file}" "${overlay_file}" "${rendered_file}"
